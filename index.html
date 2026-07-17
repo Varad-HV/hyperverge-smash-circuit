@@ -268,11 +268,28 @@ h1,h2,h3{font-family:var(--font-display);font-weight:400;letter-spacing:.5px;lin
   color:var(--white);font-family:var(--font-body);font-size:.72rem;font-weight:600;transition:border-color .2s;
 }
 .court-match-select:focus{outline:none;border-color:var(--court,var(--violet-bright));}
+.court-mode-tabs{display:flex;gap:6px;margin-bottom:12px;}
+.court-mode-tab{flex:1;font-size:.62rem;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding:7px 6px;border-radius:8px;border:1px solid var(--line-strong);color:var(--ink-dim);background:rgba(255,255,255,.03);transition:.2s;}
+.court-mode-tab.active{background:var(--court,var(--violet-bright));color:#170f36;border-color:transparent;}
+.freeplay-setup{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.freeplay-input{
+  background:var(--bg-1);border:1px solid var(--line-strong);border-radius:8px;padding:9px 10px;
+  color:var(--white);font-family:var(--font-body);font-size:.78rem;font-weight:600;transition:border-color .2s;
+}
+.freeplay-input:focus{outline:none;border-color:var(--court,var(--violet-bright));}
+.freeplay-start-btn{justify-content:center;border:1px dashed var(--line-strong);border-radius:8px;padding:9px;color:var(--ink-dim);}
+.freeplay-start-btn:hover{color:var(--green);border-color:var(--green);}
+.freeplay-tag{display:inline-flex;align-items:center;gap:6px;font-size:.6rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;}
+.freeplay-actions{display:flex;justify-content:center;gap:18px;margin-top:14px;}
 .court-caption{margin-top:16px;text-align:center;}
 .court-caption .cap-status{font-size:.64rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--court);margin-bottom:8px;}
 .court-caption .cap-teams{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;font-size:.82rem;font-weight:700;color:var(--ink);}
+.court-caption .cap-teams.freeplay-row{justify-content:space-between;flex-wrap:nowrap;}
 .court-caption .cap-vs{color:var(--ink-faint);font-size:.68rem;font-weight:700;text-transform:uppercase;}
 .court-caption .cap-score{font-family:var(--font-display);font-weight:400;font-style:italic;font-size:1rem;color:var(--white);background:rgba(255,255,255,.08);padding:1px 9px;border-radius:6px;min-width:22px;}
+.score-control.mini{gap:6px;flex-shrink:0;}
+.score-control.mini .score-btn{width:24px;height:24px;font-size:.85rem;}
+.score-control.mini .score-num{font-size:1.05rem;min-width:18px;}
 @media (max-width:700px){ .court-stage{width:100%;max-width:340px;} }
 
 /* ============================================================
@@ -605,6 +622,7 @@ footer .reset-btn:hover{color:var(--pink);border-color:var(--pink);}
     </div>
     <div class="courtside-scaler reveal" id="courtsideScaler">
       <div class="courts-stage" id="courtsStage"></div>
+      <datalist id="playerNamesList"></datalist>
     </div>
   </div>
 </section>
@@ -815,7 +833,7 @@ ALL_MATCH_IDS.push('sf1','sf2','final','third');
    STATE + SYNC LAYER
    ============================================================ */
 const STORAGE_KEY = 'smashcircuit_state_v3';
-let state = { matches:{}, tiebreak:{}, teams:{}, courtSelect:{1:null,2:null} };
+let state = { matches:{}, tiebreak:{}, teams:{}, courtSelect:{1:null,2:null}, freeplay:{1:null,2:null}, freeplayLog:[], customPlayers:[] };
 let syncMode = 'local';
 let db = null, stateRef = null, writeTimer = null;
 let walkoverPromptFor = null;
@@ -837,13 +855,36 @@ function normalizeCourtSelect(raw){
   });
   return out;
 }
-function defaultState(){ return { matches:{}, tiebreak:{}, teams:cloneTeams(DEFAULT_TEAMS), courtSelect:{1:null,2:null} }; }
+function normalizeFreeplayEntry(e){
+  if(!e || typeof e!=='object') return null;
+  const teamA = typeof e.teamA==='string' ? e.teamA.trim() : '';
+  const teamB = typeof e.teamB==='string' ? e.teamB.trim() : '';
+  if(!teamA || !teamB) return null;
+  const clamp = v => Number.isFinite(v) ? Math.max(0, Math.min(99, v)) : 0;
+  return { teamA, teamB, a: clamp(e.a), b: clamp(e.b) };
+}
+function normalizeFreeplay(raw){
+  return { 1: normalizeFreeplayEntry(raw && raw[1]), 2: normalizeFreeplayEntry(raw && raw[2]) };
+}
+function normalizeFreeplayLog(raw){
+  if(!Array.isArray(raw)) return [];
+  return raw.filter(x=>x && typeof x==='object' && typeof x.teamA==='string' && typeof x.teamB==='string').slice(0,50);
+}
+function normalizeCustomPlayers(raw){
+  if(!Array.isArray(raw)) return [];
+  return raw.filter(x=>typeof x==='string' && x.trim()).slice(-200);
+}
+function defaultState(){ return { matches:{}, tiebreak:{}, teams:cloneTeams(DEFAULT_TEAMS), courtSelect:{1:null,2:null}, freeplay:{1:null,2:null}, freeplayLog:[], customPlayers:[] }; }
 function loadLocalState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     if(!raw) return defaultState();
     const parsed = JSON.parse(raw);
-    return { matches: parsed.matches||{}, tiebreak: parsed.tiebreak||{}, teams: normalizeTeams(parsed.teams), courtSelect: normalizeCourtSelect(parsed.courtSelect) };
+    return {
+      matches: parsed.matches||{}, tiebreak: parsed.tiebreak||{}, teams: normalizeTeams(parsed.teams),
+      courtSelect: normalizeCourtSelect(parsed.courtSelect), freeplay: normalizeFreeplay(parsed.freeplay),
+      freeplayLog: normalizeFreeplayLog(parsed.freeplayLog), customPlayers: normalizeCustomPlayers(parsed.customPlayers)
+    };
   }catch(e){ return defaultState(); }
 }
 function cacheLocal(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -876,6 +917,9 @@ function pushState(){
       tiebreak: state.tiebreak,
       teams: state.teams,
       courtSelect: state.courtSelect,
+      freeplay: state.freeplay,
+      freeplayLog: state.freeplayLog,
+      customPlayers: state.customPlayers,
       updatedAt: firebase.database.ServerValue.TIMESTAMP
     }).catch(err=>{ console.error('sync write failed', err); });
   }, 150);
@@ -901,7 +945,11 @@ function initSync(){
     stateRef.on('value', snap=>{
       const val = snap.val();
       if(val){
-        state = { matches: val.matches||{}, tiebreak: val.tiebreak||{}, teams: normalizeTeams(val.teams), courtSelect: normalizeCourtSelect(val.courtSelect) };
+        state = {
+          matches: val.matches||{}, tiebreak: val.tiebreak||{}, teams: normalizeTeams(val.teams),
+          courtSelect: normalizeCourtSelect(val.courtSelect), freeplay: normalizeFreeplay(val.freeplay),
+          freeplayLog: normalizeFreeplayLog(val.freeplayLog), customPlayers: normalizeCustomPlayers(val.customPlayers)
+        };
       } else {
         state = defaultState();
         pushState();
@@ -1327,6 +1375,9 @@ function renderSparkles(){
 const COURT1_SEQUENCE = SCHEDULE.filter(s=>s.c1).map(s=>s.c1);
 const COURT2_SEQUENCE = SCHEDULE.filter(s=>s.c2).map(s=>s.c2);
 const courtLiveState = { activeCourt: 1, autoAlternate: true };
+// which input mode each court's picker is showing right now — local UI state,
+// not synced (each device can browse modes independently without affecting others)
+const courtInputMode = { 1:'scheduled', 2:'scheduled' };
 
 function matchLabel(id){
   if(id[0]==='g'){
@@ -1341,9 +1392,17 @@ function courtInfoFor(id){
   const w = winSide(st.a, st.b);
   const status = w!==0 ? 'final' : ((st.a>0||st.b>0) ? 'live' : 'upnext');
   const oc = w!==0 ? matchOutcome(id) : null;
-  return { matchId:id, nameA:p.nameA, nameB:p.nameB, crestA:p.crestA, crestB:p.crestB, status, winnerName: oc&&oc.winner?oc.winner.name:null, scoreA:st.a, scoreB:st.b };
+  return { type:'scheduled', matchId:id, nameA:p.nameA, nameB:p.nameB, crestA:p.crestA, crestB:p.crestB, status, winnerName: oc&&oc.winner?oc.winner.name:null, scoreA:st.a, scoreB:st.b };
+}
+function freeplayInfoFor(fp){
+  const w = winSide(fp.a, fp.b);
+  const status = w!==0 ? 'final' : ((fp.a>0||fp.b>0) ? 'live' : 'upnext');
+  return { type:'freeplay', nameA:fp.teamA, nameB:fp.teamB, crestA:null, crestB:null, status, winnerName: w!==0 ? (w===1?fp.teamA:fp.teamB) : null, scoreA:fp.a, scoreB:fp.b };
 }
 function computeCourtInfo(courtNum){
+  const fp = state.freeplay && state.freeplay[courtNum];
+  if(fp) return freeplayInfoFor(fp);
+
   const override = state.courtSelect && state.courtSelect[courtNum];
   if(override && getParticipants(override).ready) return courtInfoFor(override);
 
@@ -1353,6 +1412,22 @@ function computeCourtInfo(courtNum){
     if(winSide(st.a,st.b)===0) return courtInfoFor(id);
   }
   return courtInfoFor(seq[seq.length-1]);
+}
+function knownPlayerNames(){
+  const set = new Set();
+  GROUP_META.forEach(g=>[0,1,2].forEach(i=>{
+    teamName(g.id,i).split(/\s*[&,/]\s*|\s+and\s+/i).forEach(n=>{ n=n.trim(); if(n) set.add(n); });
+  }));
+  (state.customPlayers||[]).forEach(n=>set.add(n));
+  return Array.from(set).sort((a,b)=>a.localeCompare(b));
+}
+function rememberCustomPlayers(text){
+  if(!state.customPlayers) state.customPlayers = [];
+  text.split(/\s*[&,/]\s*|\s+and\s+/i).forEach(n=>{
+    n = n.trim();
+    if(n && !state.customPlayers.includes(n)) state.customPlayers.push(n);
+  });
+  if(state.customPlayers.length>200) state.customPlayers = state.customPlayers.slice(-200);
 }
 function courtSelectOptionsHtml(selectedId){
   const groupOpts = GROUP_META.map(g=>{
@@ -1417,6 +1492,61 @@ function courtCaptionHtml(info, courtNum){
     <div class="cap-teams">${crestFor(info.crestB, info.nameB, 22)}<span>${info.nameB}</span>${scoreB}</div>
   </div>`;
 }
+function freeplayCardHtml(fp, courtNum){
+  const w = winSide(fp.a, fp.b);
+  const status = w!==0 ? 'Final Result' : ((fp.a>0||fp.b>0) ? 'Now Playing' : 'Up Next');
+  const scoreCtl = (side, val)=>`<div class="score-control mini">
+      <button class="score-btn" data-action="freeplay-dec" data-court="${courtNum}" data-side="${side}" ${val<=0?'disabled':''}>−</button>
+      <span class="score-num">${val}</span>
+      <button class="score-btn" data-action="freeplay-inc" data-court="${courtNum}" data-side="${side}" ${val>=99?'disabled':''}>+</button>
+    </div>`;
+  return `
+    <div class="freeplay-tag">${icon('bolt',12)}Random Match</div>
+    ${courtIllustrationSvg()}
+    <div class="court-caption">
+      <div class="cap-status">${status}</div>
+      <div class="cap-teams freeplay-row">${crestFor(null, fp.teamA, 22)}<span>${fp.teamA}</span>${scoreCtl('a',fp.a)}</div>
+      <div class="cap-vs">vs</div>
+      <div class="cap-teams freeplay-row">${crestFor(null, fp.teamB, 22)}<span>${fp.teamB}</span>${scoreCtl('b',fp.b)}</div>
+    </div>
+    <div class="freeplay-actions">
+      <button class="mini-btn" data-action="freeplay-end" data-court="${courtNum}">${icon('flag',13)}End &amp; log match</button>
+      <button class="mini-btn danger" data-action="freeplay-cancel" data-court="${courtNum}">Cancel</button>
+    </div>`;
+}
+function scheduledCourtCardHtml(courtNum){
+  const mode = courtInputMode[courtNum];
+  const modeTabs = `<div class="court-mode-tabs">
+      <button class="court-mode-tab ${mode==='scheduled'?'active':''}" data-action="court-mode" data-court="${courtNum}" data-mode="scheduled">Scheduled</button>
+      <button class="court-mode-tab ${mode==='random'?'active':''}" data-action="court-mode" data-court="${courtNum}" data-mode="random">Random Match</button>
+    </div>`;
+  if(mode==='random'){
+    return `${modeTabs}
+      <div class="freeplay-setup">
+        <input type="text" class="freeplay-input" data-court="${courtNum}" data-side="a" list="playerNamesList" placeholder="Team A · e.g. Riya &amp; Zoya">
+        <input type="text" class="freeplay-input" data-court="${courtNum}" data-side="b" list="playerNamesList" placeholder="Team B · e.g. Kabir &amp; Neel">
+        <button class="mini-btn freeplay-start-btn" data-action="freeplay-start" data-court="${courtNum}">${icon('bolt',13)}Start random match</button>
+      </div>
+      ${courtIllustrationSvg()}
+      <div class="pending-note">Type in whoever's actually on court — any names, any pairing.</div>`;
+  }
+  const sel = state.courtSelect && state.courtSelect[courtNum];
+  const info = computeCourtInfo(courtNum);
+  return `${modeTabs}
+    <div class="court-select-row">
+      <label class="court-select-label">Showing</label>
+      <select class="court-match-select" data-court="${courtNum}">${courtSelectOptionsHtml(sel)}</select>
+    </div>
+    ${courtIllustrationSvg()}
+    ${courtCaptionHtml(info,courtNum)}`;
+}
+function renderCourtStage(courtNum){
+  const cls = courtNum===1 ? 'court-a' : 'court-b';
+  const head = `<div class="court-head"><span class="court-name"><span class="dot"></span>Court ${courtNum}</span><span class="court-live-badge"><span class="dot"></span>Live</span></div>`;
+  const fp = state.freeplay && state.freeplay[courtNum];
+  const body = fp ? freeplayCardHtml(fp, courtNum) : scheduledCourtCardHtml(courtNum);
+  return `<div class="court-stage ${cls}">${head}${body}</div>`;
+}
 function applyCourtActiveState(){
   const c1 = document.querySelector('.court-stage.court-a');
   const c2 = document.querySelector('.court-stage.court-b');
@@ -1427,29 +1557,11 @@ function applyCourtActiveState(){
 function renderCourtside(){
   const stage = document.getElementById('courtsStage');
   if(!stage) return;
-  const sel1 = state.courtSelect && state.courtSelect[1];
-  const sel2 = state.courtSelect && state.courtSelect[2];
+  stage.innerHTML = renderCourtStage(1) + renderCourtStage(2);
+  const namesList = document.getElementById('playerNamesList');
+  if(namesList) namesList.innerHTML = knownPlayerNames().map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
+
   const info1 = computeCourtInfo(1), info2 = computeCourtInfo(2);
-  stage.innerHTML = `
-    <div class="court-stage court-a">
-      <div class="court-head"><span class="court-name"><span class="dot"></span>Court 1</span><span class="court-live-badge"><span class="dot"></span>Live</span></div>
-      <div class="court-select-row">
-        <label class="court-select-label">Showing</label>
-        <select class="court-match-select" data-court="1">${courtSelectOptionsHtml(sel1)}</select>
-      </div>
-      ${courtIllustrationSvg()}
-      ${courtCaptionHtml(info1,1)}
-    </div>
-    <div class="court-stage court-b">
-      <div class="court-head"><span class="court-name"><span class="dot"></span>Court 2</span><span class="court-live-badge"><span class="dot"></span>Live</span></div>
-      <div class="court-select-row">
-        <label class="court-select-label">Showing</label>
-        <select class="court-match-select" data-court="2">${courtSelectOptionsHtml(sel2)}</select>
-      </div>
-      ${courtIllustrationSvg()}
-      ${courtCaptionHtml(info2,2)}
-    </div>
-  `;
   // real live match takes priority over the decorative alternation
   const live1 = info1.status==='live', live2 = info2.status==='live';
   if(live1 && !live2){ courtLiveState.activeCourt = 1; courtLiveState.autoAlternate = false; }
@@ -1564,6 +1676,53 @@ document.addEventListener('click', function(e){
     renderAll(); pushState();
     return;
   }
+  if(action==='court-mode'){
+    courtInputMode[btn.dataset.court] = btn.dataset.mode;
+    renderCourtside();
+    return;
+  }
+  if(action==='freeplay-start'){
+    const court = btn.dataset.court;
+    const inputA = document.querySelector(`.freeplay-input[data-court="${court}"][data-side="a"]`);
+    const inputB = document.querySelector(`.freeplay-input[data-court="${court}"][data-side="b"]`);
+    const teamA = (inputA && inputA.value.trim()) || '';
+    const teamB = (inputB && inputB.value.trim()) || '';
+    if(!teamA || !teamB){ alert("Enter who's playing on both sides to start a random match."); return; }
+    if(!state.freeplay) state.freeplay = {1:null,2:null};
+    state.freeplay[court] = { teamA, teamB, a:0, b:0 };
+    rememberCustomPlayers(teamA); rememberCustomPlayers(teamB);
+    renderAll(); pushState();
+    return;
+  }
+  if(action==='freeplay-inc' || action==='freeplay-dec'){
+    const court = btn.dataset.court, side = btn.dataset.side;
+    const fp = state.freeplay && state.freeplay[court];
+    if(!fp) return;
+    if(action==='freeplay-inc') fp[side] = Math.min(99, fp[side]+1);
+    else fp[side] = Math.max(0, fp[side]-1);
+    renderAll(); pushState();
+    return;
+  }
+  if(action==='freeplay-end'){
+    const court = btn.dataset.court;
+    const fp = state.freeplay && state.freeplay[court];
+    if(!fp) return;
+    if(!state.freeplayLog) state.freeplayLog = [];
+    state.freeplayLog.unshift({
+      id: 'fp'+Date.now(), court: Number(court), teamA: fp.teamA, teamB: fp.teamB,
+      a: fp.a, b: fp.b, winner: fp.a>fp.b ? fp.teamA : (fp.b>fp.a ? fp.teamB : null), endedAt: Date.now()
+    });
+    state.freeplayLog = state.freeplayLog.slice(0,50);
+    state.freeplay[court] = null;
+    renderAll(); pushState();
+    return;
+  }
+  if(action==='freeplay-cancel'){
+    const court = btn.dataset.court;
+    if(state.freeplay) state.freeplay[court] = null;
+    renderAll(); pushState();
+    return;
+  }
 });
 
 document.addEventListener('change', function(e){
@@ -1595,10 +1754,12 @@ document.addEventListener('input', function(e){
 });
 
 document.getElementById('resetBtn').addEventListener('click', function(){
-  if(confirm('This will erase ALL recorded scores for the entire tournament. Are you sure?')){
+  if(confirm('This will erase ALL recorded scores for the entire tournament, including any random matches on court. Are you sure?')){
     const keepTeams = state.teams;
+    const keepCustomPlayers = state.customPlayers;
     state = defaultState();
     state.teams = keepTeams;
+    state.customPlayers = keepCustomPlayers;
     renderAll(); pushState();
   }
 });
