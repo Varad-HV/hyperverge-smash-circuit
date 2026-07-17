@@ -261,10 +261,18 @@ h1,h2,h3{font-family:var(--font-display);font-weight:400;letter-spacing:.5px;lin
   50%{transform:translate(120px,168px) scale(1.18) rotate(90deg);}
   100%{transform:translate(120px,80px) scale(1) rotate(180deg);}
 }
+.court-select-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.court-select-label{font-size:.6rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap;}
+.court-match-select{
+  flex:1;min-width:0;background:var(--bg-1);border:1px solid var(--line-strong);border-radius:8px;padding:6px 8px;
+  color:var(--white);font-family:var(--font-body);font-size:.72rem;font-weight:600;transition:border-color .2s;
+}
+.court-match-select:focus{outline:none;border-color:var(--court,var(--violet-bright));}
 .court-caption{margin-top:16px;text-align:center;}
 .court-caption .cap-status{font-size:.64rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--court);margin-bottom:8px;}
 .court-caption .cap-teams{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;font-size:.82rem;font-weight:700;color:var(--ink);}
 .court-caption .cap-vs{color:var(--ink-faint);font-size:.68rem;font-weight:700;text-transform:uppercase;}
+.court-caption .cap-score{font-family:var(--font-display);font-weight:400;font-style:italic;font-size:1rem;color:var(--white);background:rgba(255,255,255,.08);padding:1px 9px;border-radius:6px;min-width:22px;}
 @media (max-width:700px){ .court-stage{width:100%;max-width:340px;} }
 
 /* ============================================================
@@ -807,7 +815,7 @@ ALL_MATCH_IDS.push('sf1','sf2','final','third');
    STATE + SYNC LAYER
    ============================================================ */
 const STORAGE_KEY = 'smashcircuit_state_v3';
-let state = { matches:{}, tiebreak:{}, teams:{} };
+let state = { matches:{}, tiebreak:{}, teams:{}, courtSelect:{1:null,2:null} };
 let syncMode = 'local';
 let db = null, stateRef = null, writeTimer = null;
 let walkoverPromptFor = null;
@@ -821,13 +829,21 @@ function normalizeTeams(raw){
   });
   return out;
 }
-function defaultState(){ return { matches:{}, tiebreak:{}, teams:cloneTeams(DEFAULT_TEAMS) }; }
+function normalizeCourtSelect(raw){
+  const out = {1:null,2:null};
+  [1,2].forEach(c=>{
+    const v = raw && raw[c];
+    out[c] = (typeof v==='string' && ALL_MATCH_IDS.includes(v)) ? v : null;
+  });
+  return out;
+}
+function defaultState(){ return { matches:{}, tiebreak:{}, teams:cloneTeams(DEFAULT_TEAMS), courtSelect:{1:null,2:null} }; }
 function loadLocalState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     if(!raw) return defaultState();
     const parsed = JSON.parse(raw);
-    return { matches: parsed.matches||{}, tiebreak: parsed.tiebreak||{}, teams: normalizeTeams(parsed.teams) };
+    return { matches: parsed.matches||{}, tiebreak: parsed.tiebreak||{}, teams: normalizeTeams(parsed.teams), courtSelect: normalizeCourtSelect(parsed.courtSelect) };
   }catch(e){ return defaultState(); }
 }
 function cacheLocal(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -859,6 +875,7 @@ function pushState(){
       matches: state.matches,
       tiebreak: state.tiebreak,
       teams: state.teams,
+      courtSelect: state.courtSelect,
       updatedAt: firebase.database.ServerValue.TIMESTAMP
     }).catch(err=>{ console.error('sync write failed', err); });
   }, 150);
@@ -884,7 +901,7 @@ function initSync(){
     stateRef.on('value', snap=>{
       const val = snap.val();
       if(val){
-        state = { matches: val.matches||{}, tiebreak: val.tiebreak||{}, teams: normalizeTeams(val.teams) };
+        state = { matches: val.matches||{}, tiebreak: val.tiebreak||{}, teams: normalizeTeams(val.teams), courtSelect: normalizeCourtSelect(val.courtSelect) };
       } else {
         state = defaultState();
         pushState();
@@ -1299,27 +1316,58 @@ function renderSparkles(){
 /* ============================================================
    COURTSIDE LIVE — animated two-court scene
    ------------------------------------------------------------
-   Not just decorative: each court shows whichever match on that
-   court is actually live (has points on the board) or, before
-   that, whichever match is up next in the real schedule order.
+   By default each court shows whichever match on that court is
+   actually live (has points on the board) or, before that,
+   whichever match is up next in the real schedule order. An
+   organizer can override this per court to feature any match on
+   the board, regardless of schedule order — e.g. to start a later
+   pairing early. The override is stored in state.courtSelect so
+   it syncs to everyone.
    ============================================================ */
 const COURT1_SEQUENCE = SCHEDULE.filter(s=>s.c1).map(s=>s.c1);
 const COURT2_SEQUENCE = SCHEDULE.filter(s=>s.c2).map(s=>s.c2);
 const courtLiveState = { activeCourt: 1, autoAlternate: true };
 
+function matchLabel(id){
+  if(id[0]==='g'){
+    const gid = id.slice(0,2), mk = id.slice(2);
+    return `${GROUP_META.find(g=>g.id===gid).name} · Match ${mk.slice(1)}`;
+  }
+  return { sf1:'Semifinal 1', sf2:'Semifinal 2', final:'Final', third:'3rd Place' }[id] || id;
+}
+function courtInfoFor(id){
+  const st = getMatch(id);
+  const p = getParticipants(id);
+  const w = winSide(st.a, st.b);
+  const status = w!==0 ? 'final' : ((st.a>0||st.b>0) ? 'live' : 'upnext');
+  const oc = w!==0 ? matchOutcome(id) : null;
+  return { matchId:id, nameA:p.nameA, nameB:p.nameB, crestA:p.crestA, crestB:p.crestB, status, winnerName: oc&&oc.winner?oc.winner.name:null, scoreA:st.a, scoreB:st.b };
+}
 function computeCourtInfo(courtNum){
+  const override = state.courtSelect && state.courtSelect[courtNum];
+  if(override && getParticipants(override).ready) return courtInfoFor(override);
+
   const seq = courtNum===1 ? COURT1_SEQUENCE : COURT2_SEQUENCE;
   for(const id of seq){
     const st = getMatch(id);
-    if(winSide(st.a,st.b)===0){
-      const p = getParticipants(id);
-      return { matchId:id, nameA:p.nameA, nameB:p.nameB, crestA:p.crestA, crestB:p.crestB, status:(st.a>0||st.b>0)?'live':'upnext' };
-    }
+    if(winSide(st.a,st.b)===0) return courtInfoFor(id);
   }
-  const lastId = seq[seq.length-1];
-  const p = getParticipants(lastId);
-  const oc = matchOutcome(lastId);
-  return { matchId:lastId, nameA:p.nameA, nameB:p.nameB, crestA:p.crestA, crestB:p.crestB, status:'final', winnerName: oc.winner?oc.winner.name:null };
+  return courtInfoFor(seq[seq.length-1]);
+}
+function courtSelectOptionsHtml(selectedId){
+  const groupOpts = GROUP_META.map(g=>{
+    const opts = ['m1','m2','m3'].map(mk=>{
+      const id = g.id+mk;
+      const p = getParticipants(id);
+      return `<option value="${id}" ${selectedId===id?'selected':''}>${g.name} M${mk.slice(1)}: ${p.nameA} vs ${p.nameB}</option>`;
+    }).join('');
+    return `<optgroup label="${g.name}">${opts}</optgroup>`;
+  }).join('');
+  const knockoutOpts = ['sf1','sf2','final','third'].filter(id=>getParticipants(id).ready).map(id=>{
+    const p = getParticipants(id);
+    return `<option value="${id}" ${selectedId===id?'selected':''}>${matchLabel(id)}: ${p.nameA} vs ${p.nameB}</option>`;
+  }).join('');
+  return `<option value="">Auto (schedule order)</option>${groupOpts}${knockoutOpts?`<optgroup label="Knockout">${knockoutOpts}</optgroup>`:''}`;
 }
 
 function chibi(cx, cy, color, delay, rd){
@@ -1359,11 +1407,14 @@ function courtIllustrationSvg(){
 function courtCaptionHtml(info, courtNum){
   const labels = { live:'Now Playing', upnext:'Up Next', final:'Final Result' };
   const sub = info.status==='final' && info.winnerName ? `<div class="cap-vs">${info.winnerName} won</div>` : `<div class="cap-vs">vs</div>`;
+  const showScore = info.status==='live' || info.status==='final';
+  const scoreA = showScore ? `<span class="cap-score">${info.scoreA}</span>` : '';
+  const scoreB = showScore ? `<span class="cap-score">${info.scoreB}</span>` : '';
   return `<div class="court-caption">
     <div class="cap-status">${labels[info.status]}</div>
-    <div class="cap-teams">${crestFor(info.crestA, info.nameA, 22)}<span>${info.nameA}</span></div>
+    <div class="cap-teams">${crestFor(info.crestA, info.nameA, 22)}<span>${info.nameA}</span>${scoreA}</div>
     ${sub}
-    <div class="cap-teams">${crestFor(info.crestB, info.nameB, 22)}<span>${info.nameB}</span></div>
+    <div class="cap-teams">${crestFor(info.crestB, info.nameB, 22)}<span>${info.nameB}</span>${scoreB}</div>
   </div>`;
 }
 function applyCourtActiveState(){
@@ -1376,15 +1427,25 @@ function applyCourtActiveState(){
 function renderCourtside(){
   const stage = document.getElementById('courtsStage');
   if(!stage) return;
+  const sel1 = state.courtSelect && state.courtSelect[1];
+  const sel2 = state.courtSelect && state.courtSelect[2];
   const info1 = computeCourtInfo(1), info2 = computeCourtInfo(2);
   stage.innerHTML = `
     <div class="court-stage court-a">
       <div class="court-head"><span class="court-name"><span class="dot"></span>Court 1</span><span class="court-live-badge"><span class="dot"></span>Live</span></div>
+      <div class="court-select-row">
+        <label class="court-select-label">Showing</label>
+        <select class="court-match-select" data-court="1">${courtSelectOptionsHtml(sel1)}</select>
+      </div>
       ${courtIllustrationSvg()}
       ${courtCaptionHtml(info1,1)}
     </div>
     <div class="court-stage court-b">
       <div class="court-head"><span class="court-name"><span class="dot"></span>Court 2</span><span class="court-live-badge"><span class="dot"></span>Live</span></div>
+      <div class="court-select-row">
+        <label class="court-select-label">Showing</label>
+        <select class="court-match-select" data-court="2">${courtSelectOptionsHtml(sel2)}</select>
+      </div>
       ${courtIllustrationSvg()}
       ${courtCaptionHtml(info2,2)}
     </div>
@@ -1428,7 +1489,8 @@ function initCourtsideScroll(){
 /* ============================================================
    MASTER RENDER
    ============================================================ */
-function renderAll(){
+function renderAll(opts){
+  opts = opts || {};
   renderSchedule();
   renderGroups();
   renderBracket();
@@ -1439,7 +1501,7 @@ function renderAll(){
   const marqueeItems = [...teamsFlat, ...teamsFlat].map(t=>`<span class="marquee-item">${icon('sparkle',12)}${t}</span>`).join('');
   const track = document.getElementById('marqueeTrack');
   if(track) track.innerHTML = marqueeItems;
-  if(document.getElementById('teamsModal').classList.contains('open')) renderTeamsModal();
+  if(!opts.skipTeamsModal && document.getElementById('teamsModal').classList.contains('open')) renderTeamsModal();
 }
 
 /* ============================================================
@@ -1504,16 +1566,32 @@ document.addEventListener('click', function(e){
   }
 });
 
+document.addEventListener('change', function(e){
+  const sel = e.target.closest('.court-match-select');
+  if(!sel) return;
+  const courtNum = sel.dataset.court;
+  if(!state.courtSelect) state.courtSelect = {1:null,2:null};
+  state.courtSelect[courtNum] = sel.value || null;
+  renderAll();
+  pushState();
+});
+
 document.addEventListener('input', function(e){
   const el = e.target.closest('[data-field="team-input"]');
   if(!el) return;
   const gid = el.dataset.group, idx = parseInt(el.dataset.idx,10);
   state.teams[gid][idx] = el.value;
-  renderAll();
+  // skip rebuilding the Manage Teams modal itself — destroying/recreating the
+  // input the user is actively typing into is what was closing the mobile
+  // keyboard after every keystroke. Everything else (schedule, groups,
+  // bracket, marquee, courtside) still updates live.
+  renderAll({ skipTeamsModal:true });
   pushState();
-  // keep focus + caret in the input we just edited (renderAll rebuilds the DOM)
-  const fresh = document.querySelector(`[data-field="team-input"][data-group="${gid}"][data-idx="${idx}"]`);
-  if(fresh){ fresh.focus(); const p = el.selectionStart; fresh.setSelectionRange(p,p); }
+  const row = el.closest('.modal-input-row');
+  if(row){
+    const crest = row.querySelector('.crest');
+    if(crest) crest.textContent = initials(el.value);
+  }
 });
 
 document.getElementById('resetBtn').addEventListener('click', function(){
