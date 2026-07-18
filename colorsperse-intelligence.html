@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colorsperse Intelligence — Overview</title>
+<meta name="description" content="Internal analytics tool monitoring client email communication, complaints, and team performance for Colorsperse.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%234B3FBE'/%3E%3Cpath d='M9 21.5c0-5.5 3-9 7.5-9 3 0 5 1.6 5 4' stroke='%23fff' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='21.5' cy='10.5' r='2' fill='%23F2A93B'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        display: ['Manrope', 'ui-sans-serif', 'sans-serif'],
+        body: ['"IBM Plex Sans"', 'ui-sans-serif', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+      },
+      colors: {
+        brand: { 50:'#EEEDFB',100:'#DEDBF7',300:'#AFA7EA',400:'#8C7FE2',500:'#6C5CD9',600:'#4B3FBE',700:'#3B3099',800:'#2C2474',900:'#1F1A52' },
+        ink: { 900:'#15131F',700:'#332F47',500:'#615C7A',400:'#7C7793',300:'#A29DB9',200:'#C7C3D6' },
+        charcoal: { 950:'#121020',900:'#171429',800:'#211D39',700:'#2E2949',600:'#3D3760',400:'#948DB3',200:'#DCD9EB',100:'#EEECF7' },
+        amber: { 50:'#FEF6E7',100:'#FCEAC5',600:'#B4740A',700:'#8F5C08' },
+        coral: { 50:'#FDECEA',100:'#FAD3CE',500:'#E1483D',600:'#C7362C',700:'#A32A21' },
+        good: { 50:'#E9F7F1',100:'#CDEEE0',600:'#0D8F62',700:'#0B7350' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(21,19,31,0.04), 0 1px 1px rgba(21,19,31,0.03)',
+        pop: '0 12px 32px -12px rgba(21,19,31,0.28)',
+      },
+    },
+  },
+}
+</script>
+<style>
+  html,body{height:100%;}
+  body{font-family:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;background:#F7F6FB;-webkit-font-smoothing:antialiased;}
+  .font-display{font-family:'Manrope',ui-sans-serif,sans-serif;}
+  .font-mono-num{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;}
+  .tabular{font-variant-numeric:tabular-nums;}
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#DAD6E9;border-radius:8px;}
+  ::-webkit-scrollbar-thumb:hover{background:#C2BDD9;}
+  .fade-in{animation:fadeIn .3s ease both;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+  .case-in{animation:caseIn .28s cubic-bezier(.2,.8,.2,1) both;}
+  @keyframes caseIn{from{opacity:0;transform:translateY(8px) scale(.995);}to{opacity:1;transform:translateY(0) scale(1);}}
+  select{background-image:none;}
+  #root{min-height:100vh;}
+  h1,h2,h3,h4{text-wrap:balance;}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important;}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/prop-types@15/prop-types.min.js" crossorigin></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useEffect, useRef } = React;
+const {
+  ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, ReferenceLine,
+} = Recharts;
+
+/* ============================================================
+   ICONS
+   ============================================================ */
+function Icon({ name, size = 18, className = "" }) {
+  const P = {
+    grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/>',
+    caseFile: '<path d="M4 7.5a2 2 0 0 1 2-2h3.2l1.5 1.8H18a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M4 10.5h16"/>',
+    users: '<path d="M16.5 20v-1.8a3.7 3.7 0 0 0-3.7-3.7H7.7A3.7 3.7 0 0 0 4 18.2V20"/><circle cx="10.6" cy="7.6" r="3.6"/><path d="M21 20v-1.8a3.7 3.7 0 0 0-2.7-3.55"/><path d="M15.3 4.15a3.6 3.6 0 0 1 0 7.1"/>',
+    activity: '<path d="M3 12h4l2.2 6.5L13 5.5 15.2 12H21"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V19.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H4.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H10.6A1.7 1.7 0 0 0 11.64 3H11.65a1.7 1.7 0 0 0 1.04 1.56V4.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.02a1.7 1.7 0 0 0 1.56 1.04H19.5a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.04Z" stroke-width="0" fill="none"/>',
+    chevronDown: '<path d="m6 9 6 6 6-6"/>',
+    chevronRight: '<path d="m9 6 6 6-6 6"/>',
+    arrowUp: '<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>',
+    arrowDown: '<path d="M12 5v14"/><path d="m6 13 6 6 6-6"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 2"/>',
+    alertOctagon: '<path d="M8.2 3.5h7.6L21 8.2v7.6L15.8 20.5H8.2L3 15.8V8.2Z"/><path d="M12 8v5"/><circle cx="12" cy="16.2" r="0.25" fill="currentColor"/>',
+    loader: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.6 1.6"/>',
+    checkCircle: '<path d="M12 2.5 4.5 6v6c0 5 3.4 8.4 7.5 9.4 4.1-1 7.5-4.4 7.5-9.4V6L12 2.5Z" fill="currentColor" fill-opacity=".1"/><path d="m8.8 12 2.2 2.2 4.2-4.4"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+    sparkles: '<path d="M12 3 13.4 8.6 19 10 13.4 11.4 12 17 10.6 11.4 5 10 10.6 8.6Z" fill="currentColor" stroke="none"/><path d="M19 3.5 19.6 5.4 21.5 6 19.6 6.6 19 8.5 18.4 6.6 16.5 6 18.4 5.4Z" fill="currentColor" stroke="none"/>',
+    inbox: '<path d="M4 13h4.2l1.2 2.4h5.2L15.8 13H20"/><rect x="3.5" y="6" width="17" height="14" rx="2"/>',
+    bulb: '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.45 1.1 1.35 1.1 2.2h5c0-.85.5-1.75 1.1-2.2A6 6 0 0 0 12 3Z"/>',
+    target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
+    flag: '<path d="M5 21V4"/><path d="M5 4h13l-3 4 3 4H5"/>',
+    sort: '<path d="M7 9.5 10 6.5 13 9.5" /><path d="M17 14.5 14 17.5 11 14.5"/>',
+    sortUp: '<path d="M7 14 12 9 17 14"/>',
+    sortDown: '<path d="M7 10 12 15 17 10"/>',
+    trophy: '<path d="M8.5 21h7M12 17.3V21M7.5 4h9v4.2a4.5 4.5 0 0 1-9 0V4Z"/><path d="M7.5 5.2H5a2 2 0 0 0 0 4h1.3M16.5 5.2H19a2 2 0 0 1 0 4h-1.3"/>',
+    x: '<path d="M6 6l12 12M18 6 6 18"/>',
+    building: '<rect x="4" y="3.5" width="10" height="17" rx="1"/><path d="M17 9.5h3v11h-3z"/><path d="M7.5 7h1M10.5 7h1M7.5 10h1M10.5 10h1M7.5 13h1M10.5 13h1M7.5 16h1M10.5 16h1"/>',
+    bell: '<path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 6 1.5 6h-15S6 13.5 6 9Z"/><path d="M10 19a2 2 0 0 0 4 0"/>',
+    slider: '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="1.8" fill="currentColor" stroke="#fff" stroke-width="1"/><circle cx="16" cy="12" r="1.8" fill="currentColor" stroke="#fff" stroke-width="1"/><circle cx="10" cy="18" r="1.8" fill="currentColor" stroke="#fff" stroke-width="1"/>',
+  };
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"
+      dangerouslySetInnerHTML={{ __html: P[name] || "" }} />
+  );
+}
+
+/* ============================================================
+   MOCK DATA — teams, employees, clients, complaints
+   ============================================================ */
+const TEAM_KEYS = ["Sales", "Finance", "Logistics", "QC"];
+const TEAM_COLOR = { Sales: "#4B3FBE", Finance: "#0D8F62", Logistics: "#C7362C", QC: "#B4740A" };
+const TEAM_DOT = { Sales: "bg-brand-600", Finance: "bg-good-600", Logistics: "bg-coral-600", QC: "bg-amber-600" };
+const TEAM_TEXT = { Sales: "text-brand-700", Finance: "text-good-700", Logistics: "text-coral-700", QC: "text-amber-700" };
+
+const EMPLOYEE_NAMES = {
+  Sales: ["Priya Nandakumar","Marcus Webb","Elena Torres","Rohan Malhotra","Chloe Bennett","Tariq Osei","Ingrid Solberg","Devon Clarke","Meera Iyer","Jonas Kessler","Aisha Farouk","Lucas Hartmann","Naomi Cruz","Felix Andrade","Simone Duval"],
+  Finance: ["Anjali Rao","Graham Pierce","Wei Chen","Isabela Souza","Tom Fairbanks","Ravi Chandran","Nora Lindqvist","Samuel Okafor","Petra Vogel","Daniel Ibrahim","Lena Marchetti","Owen Fitzgerald","Yuki Tanaka","Clara Jensen","Nikhil Bhatt"],
+  Logistics: ["Carlos Mendoza","Fatima Sheikh","Brett Coleman","Sana Malik","Diego Alvarez","Holly Prescott","Kwame Asante","Renata Silva","Aidan Murphy","Leila Haddad","Gustav Bergman","Priyanka Sethi","Connor Blake","Ines Fontaine","Manuel Rios"],
+  QC: ["Sophia Lindgren","Arjun Deshmukh","Rachel Voss","Ehsan Karimi","Bianca Ferreira","Trevor Lynch","Mei Ling Tan","Oscar Novak","Divya Krishnan","Patrick Doyle","Hana Suzuki","Callum Reid","Zara Ahmed","Bruno Conti","Wendy Zhou"],
+};
+
+const CLIENTS = [
+  "Anchorline Traders","Baxter & Vance Holdings","Cascade Textiles Co.","Delmore Foods Group",
+  "Ellison Retail Partners","Fenwick Marine Supply","Granite Peak Constructors","Halcyon Pharma",
+  "Ironclad Manufacturing","Junction Freight Partners","Kestrel Apparel Co.","Lonestar Beverages",
+  "Meridian Components","Norwood Furniture Co.","Oakfield Agritech","Pinnacle Electronics",
+  "Quarryhill Materials","Silverline Packaging",
+];
+
+// 14-day avg-response-time trend per team (hours/day, oldest -> newest).
+// This is the single source of truth the whole app derives its "this week
+// vs last week" story from: Logistics worsening, Finance fastest and
+// improving, QC spiking hard in the final two days, Sales flat.
+const TEAM_TREND_14 = {
+  Sales:     [3.1,3.0,3.2,2.9,3.1,3.0,3.0, 2.9,3.1,3.0,2.9,3.0,3.1,3.0],
+  Finance:   [1.4,1.35,1.3,1.3,1.25,1.3,1.28, 1.2,1.22,1.18,1.2,1.15,1.2,1.18],
+  Logistics: [5.6,5.8,5.9,6.0,6.2,6.1,6.3, 6.5,6.7,6.8,7.0,7.3,7.5,7.8],
+  QC:        [3.0,3.1,2.9,3.0,3.1,3.0,3.2, 3.1,3.2,3.3,3.4,3.8,4.8,5.6],
+};
+const TEAM_WEEKLY_EMAILS = { Sales: 430, Finance: 390, Logistics: 400, QC: 250 };
+const TEAM_DIST = {
+  // <1h, 1-4h, 4-24h, 24-48h, >48h — sums to TEAM_WEEKLY_EMAILS per team
+  Sales:     [130, 190, 95, 12, 3],
+  Finance:   [230, 115, 40, 5, 0],
+  Logistics: [25, 80, 165, 90, 40],
+  QC:        [45, 70, 85, 35, 15],
+};
+const DIST_BINS = ["<1h", "1-4h", "4-24h", "24-48h", ">48h"];
+const BIN_COLOR = ["#0D8F62", "#4B3FBE", "#B4740A", "#DB6A3A", "#C7362C"];
+
+function avg(arr) { return arr.reduce((a, b) => a + b, 0) / arr.length; }
+const TEAMS = TEAM_KEYS.map((team) => {
+  const trend = TEAM_TREND_14[team];
+  const prevWeek = trend.slice(0, 7);
+  const thisWeek = trend.slice(7, 14);
+  const avgHours = +avg(thisWeek).toFixed(1);
+  const avgHoursLast = +avg(prevWeek).toFixed(1);
+  return {
+    key: team,
+    name: team,
+    color: TEAM_COLOR[team],
+    weeklyEmails: TEAM_WEEKLY_EMAILS[team],
+    avgHours,
+    avgHoursLast,
+    deltaPct: ((avgHours - avgHoursLast) / avgHoursLast) * 100,
+    sparkline: thisWeek.map((v, i) => ({ i, v })),
+    trend14: trend.map((v, i) => ({ i, v })),
+  };
+});
+const TEAM_BY_KEY = Object.fromEntries(TEAMS.map((t) => [t.key, t]));
+
+// id, client, team, employee, status, severity, category, description, hoursElapsed, daysAgo, diagnosis, action
+const RAW_CASES = [
+  // ---- Logistics: weakest team, mostly Stuck/High ----
+  ["Junction Freight Partners","Logistics","Carlos Mendoza","Stuck","High","shipment delay",
+    "Client says their shipment (order #JF-8834) has been delayed 6 days past the promised delivery window with no tracking update since Tuesday.",
+    148, 6,
+    "Awaiting confirmation from the freight partner on a revised ETA — no internal follow-up has gone out in 4 days.",
+    "Escalate to the freight partner's account manager directly and send the client a holding reply with a concrete new ETA by end of day."],
+  ["Ironclad Manufacturing","Logistics","Fatima Sheikh","Stuck","High","quality issue",
+    "Received batch (PO #55291) does not meet the agreed spec sheet — the client's QA team rejected the full pallet.",
+    76, 3,
+    "The ticket was reassigned twice and the new owner hasn't opened the thread in 3 days.",
+    "Reassign to a single dedicated owner today and schedule a call with the client's QA lead within 24 hours."],
+  ["Granite Peak Constructors","Logistics","Brett Coleman","Stuck","High","shipment delay",
+    "Order still hasn't dispatched a full week after the promised ship date; the client has threatened to cancel the contract.",
+    164, 6,
+    "The warehouse hasn't confirmed stock availability, and nobody has followed up with them since Monday.",
+    "Get same-day stock confirmation from the warehouse and offer an expedited shipping upgrade at no cost to retain the account."],
+  ["Quarryhill Materials","Logistics","Sana Malik","Stuck","High","no response",
+    "Client has sent two follow-up emails in 4 days asking for any update and received nothing back.",
+    96, 4,
+    "Employee has not opened the thread in over 48 hours.",
+    "Reassign to an available team member immediately and send an apology plus status update within the hour."],
+  ["Silverline Packaging","Logistics","Diego Alvarez","In Progress","Medium","shipment delay",
+    "Delivery missed its committed window for the second time this month.",
+    20, 1,
+    "Waiting on the logistics partner to confirm a new delivery slot.",
+    "Set a 24-hour deadline with the logistics partner and proactively update the client before they have to ask again."],
+  ["Meridian Components","Logistics","Holly Prescott","Stuck","Medium","quality issue",
+    "Packaging arrived damaged for the third time this month; the client is asking for a permanent fix, not another replacement.",
+    118, 5,
+    "The root-cause packaging review from the warehouse team is overdue by 5 days.",
+    "Pull in the warehouse ops lead to close out the root-cause review this week and share the findings with the client directly."],
+  ["Norwood Furniture Co.","Logistics","Kwame Asante","In Progress","Medium","wrong information",
+    "Client was given an incorrect delivery timeline by phone that doesn't match what's in the system.",
+    9, 0,
+    "Waiting on dispatch to confirm the real delivery date before replying.",
+    "Confirm the accurate date internally within 2 hours and send a corrected timeline with an apology for the confusion."],
+  ["Oakfield Agritech","Logistics","Renata Silva","Stuck","High","shipment delay",
+    "Tracking shows “delivered” but the client says nothing arrived at their dock.",
+    52, 2,
+    "Awaiting a claim response from the carrier — no internal update has been sent to the client in 2 days.",
+    "File an expedited carrier trace and send the client an interim update today so they aren't left guessing."],
+  ["Cascade Textiles Co.","Logistics","Aidan Murphy","Stuck","High","no response",
+    "Client escalated to their procurement director after being ignored for a full week.",
+    172, 7,
+    "The thread was buried in a shared inbox and never assigned to an owner.",
+    "Assign a named owner now, call the procurement director directly, and follow up in writing with an apology and resolution plan."],
+  ["Halcyon Pharma","Logistics","Leila Haddad","In Progress","High","shipment delay",
+    "Partial shipment arrived; the temperature-sensitive remainder is still missing and cold-chain validity is at risk.",
+    14, 0,
+    "Waiting on the logistics partner to confirm the remaining pallet's location.",
+    "Treat as urgent — get carrier location confirmation within 2 hours or arrange an emergency replacement shipment."],
+  ["Baxter & Vance Holdings","Logistics","Priyanka Sethi","Resolved","Low","shipment delay",
+    "Delivery was rescheduled twice in one week, frustrating the client's receiving team.",
+    22, 1,
+    "Resolved by assigning a fixed delivery slot and confirming it directly with the client's warehouse manager.",
+    "No further action needed — delivery slot is now locked in and confirmed."],
+  // ---- QC: recent spike, concentrated in the last two days ----
+  ["Pinnacle Electronics","QC","Sophia Lindgren","Stuck","High","quality issue",
+    "Second consecutive batch this month failed incoming inspection; the client is pausing new orders until this is resolved.",
+    58, 2,
+    "Waiting on QA's root-cause report, which has been sitting in draft for 2 days.",
+    "Finish the root-cause report today and set up a joint call with the client's quality team to walk through the fix."],
+  ["Ellison Retail Partners","QC","Arjun Deshmukh","Stuck","High","quality issue",
+    "Defect rate on the latest order jumped to 12%, well above the 2% contractual threshold.",
+    33, 1,
+    "Awaiting internal approval from Finance for the credit owed to the client under the quality SLA.",
+    "Escalate to the Finance manager for same-day approval of the SLA credit so the reply isn't held up any longer."],
+  ["Kestrel Apparel Co.","QC","Rachel Voss","In Progress","Medium","quality issue",
+    "Stitching defects found across an entire pallet during the client's receiving inspection.",
+    15, 1,
+    "Waiting on the manufacturing floor to confirm whether the issue affects other pallets from the same run.",
+    "Get a same-day answer from the floor supervisor and proactively flag any other affected pallets before the client finds them first."],
+  ["Fenwick Marine Supply","QC","Ehsan Karimi","Stuck","High","no response",
+    "Client's follow-up asking for a corrective action plan was missed inside a long email thread.",
+    44, 2,
+    "The client's follow-up was missed in a long thread — buried after 14 prior replies.",
+    "Reply today acknowledging the delay, and start flagging long threads for a dedicated summary check going forward."],
+  ["Lonestar Beverages","QC","Bianca Ferreira","In Progress","Medium","quality issue",
+    "Client's QA team flagged a labeling mismatch between the carton and the case.",
+    11, 0,
+    "Waiting on the print vendor to confirm which run had the mismatched labels.",
+    "Get the print vendor's run confirmation today and send the client a full list of affected lot numbers proactively."],
+  ["Junction Freight Partners","QC","Trevor Lynch","Stuck","Medium","wrong information",
+    "Certificate of compliance sent to the client listed the wrong batch number, risking a customs hold.",
+    50, 2,
+    "Employee has not opened the thread in 48 hours.",
+    "Reassign immediately and issue a corrected certificate within the hour given the customs risk."],
+  ["Cascade Textiles Co.","QC","Divya Krishnan","Resolved","Low","billing discrepancy",
+    "A quality re-inspection fee appeared on the invoice without prior approval from the client.",
+    18, 3,
+    "Resolved by removing the fee and confirming in writing that re-inspection fees require client sign-off going forward.",
+    "No further action needed — policy note added to the account."],
+  // ---- Sales: steady, average, mixed ----
+  ["Meridian Components","Sales","Priya Nandakumar","Resolved","Medium","wrong information",
+    "Client was quoted last year's SKU pricing on a renewal, an 8% discrepancy from current rates.",
+    6, 0,
+    "Resolved by honoring the quoted price for this renewal and correcting the pricing sheet the rep was using.",
+    "No further action needed — pricing sheet corrected for future renewals."],
+  ["Kestrel Apparel Co.","Sales","Marcus Webb","In Progress","Low","no response",
+    "A pricing follow-up email sat unanswered for 2 days during a busy renewal cycle.",
+    18, 1,
+    "Rep is juggling quarter-end renewals and this thread slipped down the queue.",
+    "Reply within the next few hours; consider a shared queue for renewal-season follow-ups next quarter."],
+  ["Oakfield Agritech","Sales","Elena Torres","Stuck","Medium","wrong information",
+    "Contract terms sent for signature don't match what was verbally agreed on the sales call.",
+    41, 1,
+    "Waiting on the sales manager to confirm which terms are correct before replying.",
+    "Get manager sign-off today and send a corrected contract with a clear explanation of the discrepancy."],
+  ["Delmore Foods Group","Sales","Rohan Malhotra","Resolved","Low","billing discrepancy",
+    "A discount promised verbally on a call was missing from the final invoice.",
+    4, 0,
+    "Resolved by issuing a credit note for the promised discount and looping in Finance to prevent a repeat.",
+    "No further action needed — credit note issued."],
+  ["Ironclad Manufacturing","Sales","Chloe Bennett","In Progress","Medium","no response",
+    "Second reminder sent by the client after their contract question went unanswered.",
+    22, 1,
+    "Awaiting a legal review of the contract clause the client is asking about.",
+    "Chase legal for a same-day answer and send the client an interim acknowledgment now."],
+  ["Anchorline Traders","Sales","Tariq Osei","Stuck","Low","wrong information",
+    "Client was given an outdated product spec sheet that no longer matches what's actually shipped.",
+    55, 2,
+    "Employee has not opened the thread in over 2 days.",
+    "Reassign and send the current spec sheet along with a short note explaining what changed."],
+  // ---- Finance: fastest, fewest complaints ----
+  ["Baxter & Vance Holdings","Finance","Anjali Rao","Resolved","Medium","billing discrepancy",
+    "Client was billed twice for invoice #4521 and hadn't received a correction after a week.",
+    3, 0,
+    "Resolved same-day: duplicate charge refunded and a note added to the account to prevent auto-rebilling.",
+    "No further action needed — refund confirmed with the client."],
+  ["Granite Peak Constructors","Finance","Graham Pierce","Resolved","Low","billing discrepancy",
+    "Client was charged twice for the same order due to a payment portal glitch.",
+    2, 0,
+    "Resolved by refunding the duplicate charge and reporting the portal glitch to the payments vendor.",
+    "No further action needed — vendor ticket opened for the glitch."],
+  ["Lonestar Beverages","Finance","Wei Chen","In Progress","Low","billing discrepancy",
+    "A credit note approved last month was never applied to the client's account balance.",
+    26, 1,
+    "Waiting on the billing system's sync job, which only runs once a week.",
+    "Apply the credit manually today rather than waiting on the next scheduled sync."],
+  ["Silverline Packaging","Finance","Isabela Souza","Resolved","Low","wrong information",
+    "A PO number mismatch delayed processing of an otherwise straightforward order.",
+    5, 0,
+    "Resolved by correcting the PO number and confirming the order shipped on the original schedule.",
+    "No further action needed — order confirmed shipped."],
+];
+
+const CASES = RAW_CASES.map((r, i) => ({
+  id: "CMP-" + String(180 + i),
+  client: r[0], team: r[1], employee: r[2], status: r[3], severity: r[4], category: r[5],
+  description: r[6], hoursElapsed: r[7], daysAgo: r[8], diagnosis: r[9], action: r[10],
+}));
+
+/* ---- Derived: employees, KPIs, insight — all computed from the arrays above ---- */
+function jitter(i, spread) { return (((i * 37) % 17) - 8) / 8 * spread; }
+const TEAM_RESOLUTION_BASE = { Sales: 93, Finance: 98, Logistics: 82, QC: 88 };
+const TEAM_HOUR_SPREAD = { Sales: 0.9, Finance: 0.35, Logistics: 2.3, QC: 1.5 };
+
+const EMPLOYEES = TEAM_KEYS.flatMap((team) => {
+  const names = EMPLOYEE_NAMES[team];
+  const t = TEAM_BY_KEY[team];
+  const perHead = t.weeklyEmails / names.length;
+  return names.map((name, i) => {
+    const hours = Math.max(0.4, +(t.avgHours + jitter(i, TEAM_HOUR_SPREAD[team])).toFixed(1));
+    const emails = Math.max(10, Math.round(perHead + jitter(i, perHead * 0.3)));
+    const cases = CASES.filter((c) => c.employee === name);
+    const stuckCount = cases.filter((c) => c.status === "Stuck").length;
+    let resolutionRate = Math.round(TEAM_RESOLUTION_BASE[team] + jitter(i + 3, 6) - stuckCount * 4);
+    resolutionRate = Math.min(100, Math.max(64, resolutionRate));
+    return { name, team, avgResponseHours: hours, emailsHandled: emails, complaintsFlagged: cases.length, resolutionRate };
+  });
+});
+
+const TOTAL_EMAILS_WEEK = TEAM_KEYS.reduce((s, t) => s + TEAM_WEEKLY_EMAILS[t], 0);
+const TOTAL_EMAILS_TODAY = 261;
+const TOTAL_EMAILS_SPARK = [210, 205, 215, 225, 200, 205, 210].map((v, i) => ({ i, v }));
+
+const OPEN_CASES = CASES.filter((c) => c.status !== "Resolved");
+const STUCK_CASES = CASES.filter((c) => c.status === "Stuck");
+const OPEN_COMPLAINTS = OPEN_CASES.length;
+const OPEN_COMPLAINTS_LAST_WEEK = 17;
+const OPEN_COMPLAINTS_SPARK = [15, 16, 15, 18, 19, 20, OPEN_COMPLAINTS].map((v, i) => ({ i, v }));
+const STUCK_THREADS = STUCK_CASES.length;
+const STUCK_THREADS_LAST_WEEK = 10;
+const STUCK_THREADS_SPARK = [8, 9, 9, 10, 11, 12, STUCK_THREADS].map((v, i) => ({ i, v }));
+
+const AVG_HOURS_THIS_WEEK = TEAMS.reduce((s, t) => s + t.avgHours * t.weeklyEmails, 0) / TOTAL_EMAILS_WEEK;
+const AVG_HOURS_LAST_WEEK = TEAMS.reduce((s, t) => s + t.avgHoursLast * t.weeklyEmails, 0) / TOTAL_EMAILS_WEEK;
+const AVG_HOURS_DELTA_PCT = ((AVG_HOURS_THIS_WEEK - AVG_HOURS_LAST_WEEK) / AVG_HOURS_LAST_WEEK) * 100;
+const AVG_HOURS_SPARK = (() => {
+  const days = [];
+  for (let d = 7; d < 14; d++) {
+    const v = TEAMS.reduce((s, t) => s + TEAM_TREND_14[t.key][d] * t.weeklyEmails, 0) / TOTAL_EMAILS_WEEK;
+    days.push({ i: d, v: +v.toFixed(2) });
+  }
+  return days;
+})();
+
+function distributionFor(teamFilter) {
+  const teams = teamFilter === "All" ? TEAM_KEYS : [teamFilter];
+  return DIST_BINS.map((label, i) => ({ label, count: teams.reduce((s, t) => s + TEAM_DIST[t][i], 0) }));
+}
+
+function buildInsight() {
+  const logistics = TEAM_BY_KEY.Logistics;
+  const finance = TEAM_BY_KEY.Finance;
+  const oldLogistics = Math.round(logistics.deltaPct);
+  const shipmentDelayStuck48 = CASES.filter(
+    (c) => c.team === "Logistics" && c.category === "shipment delay" && c.status === "Stuck" && c.hoursElapsed > 48
+  );
+  const worstCase = [...STUCK_CASES].sort((a, b) => b.hoursElapsed - a.hoursElapsed)[0];
+  const qcTrend = TEAM_TREND_14.QC;
+  const qcLast2 = avg(qcTrend.slice(12, 14));
+  const qcPrev2 = avg(qcTrend.slice(10, 12));
+  const qcSpikePct = Math.round(((qcLast2 - qcPrev2) / qcPrev2) * 100);
+  return {
+    headline: `${shipmentDelayStuck48.length} unresolved Logistics complaints are dragging response times up ${oldLogistics}%`,
+    body: `Logistics response times rose ${oldLogistics}% this week, driven by ${shipmentDelayStuck48.length} unresolved shipment delay complaints older than 48 hours — ${worstCase.client} has been waiting the longest, stuck for ${formatElapsedLong(worstCase.hoursElapsed)}. QC is showing an early warning sign of its own: average response time jumped ${qcSpikePct}% in just the last two days. Finance remains the benchmark at ${finance.avgHours}h average, and Sales is holding steady week over week.`,
+  };
+}
+
+/* ============================================================
+   FORMATTERS
+   ============================================================ */
+function formatElapsedShort(hours) {
+  if (hours < 24) return `${hours}h`;
+  const d = Math.floor(hours / 24), h = hours % 24;
+  return h ? `${d}d ${h}h` : `${d}d`;
+}
+function formatElapsedLong(hours) {
+  if (hours < 1) return "under an hour";
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"}`;
+  const d = Math.floor(hours / 24), h = hours % 24;
+  const dayPart = `${d} day${d === 1 ? "" : "s"}`;
+  return h ? `${dayPart}, ${h} hour${h === 1 ? "" : "s"}` : dayPart;
+}
+function fmt(n) { return n.toLocaleString("en-US"); }
+
+const INSIGHT = buildInsight();
+
+/* ============================================================
+   SHARED UI PRIMITIVES
+   ============================================================ */
+const SEVERITY_STYLE = {
+  High: "bg-coral-50 text-coral-700 ring-1 ring-inset ring-coral-500/25",
+  Medium: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20",
+  Low: "bg-ink-200/40 text-ink-500 ring-1 ring-inset ring-ink-300/50",
+};
+function SeverityChip({ level, size = "sm" }) {
+  const pad = size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs";
+  return <span className={`inline-flex items-center rounded-full font-semibold ${pad} ${SEVERITY_STYLE[level]}`}>{level}</span>;
+}
+const STATUS_STYLE = {
+  Stuck: { dot: "bg-coral-600", text: "text-coral-700", icon: "alertOctagon" },
+  "In Progress": { dot: "bg-brand-500", text: "text-brand-700", icon: "loader" },
+  Resolved: { dot: "bg-good-600", text: "text-good-700", icon: "checkCircle" },
+};
+function StatusTag({ status }) {
+  const s = STATUS_STYLE[status];
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${s.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+      {status}
+    </span>
+  );
+}
+function TrendBadge({ pct, goodWhenDown = true, decimals = 0 }) {
+  const isUp = pct >= 0;
+  const good = goodWhenDown ? !isUp : isUp;
+  const cls = good ? "text-good-700 bg-good-50" : "text-coral-700 bg-coral-50";
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-1.5 py-0.5 rounded-md ${cls}`}>
+      <Icon name={isUp ? "arrowUp" : "arrowDown"} size={11} />
+      {Math.abs(pct).toFixed(decimals)}%
+    </span>
+  );
+}
+function Avatar({ name, team, size = 30 }) {
+  const initials = name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+  return (
+    <span
+      className="inline-flex items-center justify-center rounded-full font-semibold text-white shrink-0"
+      style={{ width: size, height: size, fontSize: size * 0.38, backgroundColor: TEAM_COLOR[team] }}
+    >
+      {initials}
+    </span>
+  );
+}
+
+function Sparkline({ data, color, height = 36, area = true }) {
+  const gid = useRef("g" + Math.random().toString(36).slice(2)).current;
+  return (
+    <div style={{ width: "100%", height }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 3, right: 3, bottom: 0, left: 3 }}>
+          <defs>
+            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={area ? 0.28 : 0} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <Area
+            type="monotone" dataKey="v" stroke={color} strokeWidth={2}
+            fill={`url(#${gid})`} isAnimationActive={false}
+            dot={(props) => {
+              const isLast = props.index === data.length - 1;
+              if (!isLast) return <circle key={props.index} cx={props.cx} cy={props.cy} r={0} />;
+              return <circle key={props.index} cx={props.cx} cy={props.cy} r={2.6} fill={color} stroke="white" strokeWidth={1.4} />;
+            }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ============================================================
+   SKELETON
+   ============================================================ */
+function SkeletonBlock({ className }) { return <div className={`animate-pulse bg-ink-200/50 rounded-xl ${className}`} />; }
+function PageSkeleton() {
+  return (
+    <div className="p-6 lg:p-8 space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[0, 1, 2, 3].map((i) => <SkeletonBlock key={i} className="h-32" />)}
+      </div>
+      <SkeletonBlock className="h-28" />
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+        {[0, 1, 2, 3].map((i) => <SkeletonBlock key={i} className="h-40" />)}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   KPI CARDS (Overview)
+   ============================================================ */
+function KPICard({ icon, label, value, trendPct, trendData, goodWhenDown = true, sub, neutral = false }) {
+  return (
+    <div className="bg-white rounded-2xl border border-ink-200/60 p-5 shadow-card">
+      <div className="flex items-start justify-between mb-4">
+        <div className="w-9 h-9 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center">
+          <Icon name={icon} size={17} />
+        </div>
+        {trendPct !== undefined && !neutral && <TrendBadge pct={trendPct} goodWhenDown={goodWhenDown} />}
+        {neutral && trendPct !== undefined && (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold px-1.5 py-0.5 rounded-md text-ink-500 bg-ink-100/60">
+            <Icon name={trendPct >= 0 ? "arrowUp" : "arrowDown"} size={11} />{Math.abs(trendPct).toFixed(0)}%
+          </span>
+        )}
+      </div>
+      <div className="font-display text-[1.7rem] font-extrabold text-ink-900 tracking-tight tabular leading-none">{value}</div>
+      <div className="text-sm text-ink-500 mt-1.5">{label}</div>
+      {sub && <div className="text-xs text-ink-400 mt-1">{sub}</div>}
+      {trendData && <div className="mt-3 -mx-1"><Sparkline data={trendData} color={neutral ? "#948DB3" : (trendPct >= 0 === !goodWhenDown ? "#0D8F62" : "#C7362C")} /></div>}
+    </div>
+  );
+}
+
+function KPIRow({ teamFilter }) {
+  const scope = teamFilter === "All" ? TEAM_KEYS : [teamFilter];
+  const weekly = scope.reduce((s, t) => s + TEAM_WEEKLY_EMAILS[t], 0);
+  const openComplaints = CASES.filter((c) => (teamFilter === "All" || c.team === teamFilter) && c.status !== "Resolved").length;
+  const stuck = CASES.filter((c) => (teamFilter === "All" || c.team === teamFilter) && c.status === "Stuck").length;
+  const avgHours = scope.reduce((s, t) => s + TEAM_BY_KEY[t].avgHours * TEAM_WEEKLY_EMAILS[t], 0) / weekly;
+  const avgHoursLast = scope.reduce((s, t) => s + TEAM_BY_KEY[t].avgHoursLast * TEAM_WEEKLY_EMAILS[t], 0) / weekly;
+  const avgDelta = ((avgHours - avgHoursLast) / avgHoursLast) * 100;
+  const isAll = teamFilter === "All";
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <KPICard icon="inbox" label={isAll ? "Emails handled this week" : `${teamFilter} emails this week`}
+        value={fmt(weekly)} sub={isAll ? `${TOTAL_EMAILS_TODAY} today` : null}
+        trendPct={isAll ? 2 : undefined} neutral trendData={isAll ? TOTAL_EMAILS_SPARK : undefined} />
+      <KPICard icon="caseFile" label="Open complaints" value={fmt(openComplaints)}
+        trendPct={isAll ? ((OPEN_COMPLAINTS - OPEN_COMPLAINTS_LAST_WEEK) / OPEN_COMPLAINTS_LAST_WEEK) * 100 : undefined}
+        trendData={isAll ? OPEN_COMPLAINTS_SPARK : undefined}
+        sub={`${CASES.filter(c => (teamFilter === "All" || c.team === teamFilter) && c.severity === "High" && c.status !== "Resolved").length} High severity`} />
+      <KPICard icon="clock" label="Avg response time" value={`${avgHours.toFixed(1)}h`}
+        trendPct={avgDelta} trendData={isAll ? AVG_HOURS_SPARK : undefined} />
+      <KPICard icon="alertOctagon" label="Stuck threads (24h+)" value={fmt(stuck)}
+        trendPct={isAll ? ((STUCK_THREADS - STUCK_THREADS_LAST_WEEK) / STUCK_THREADS_LAST_WEEK) * 100 : undefined}
+        trendData={isAll ? STUCK_THREADS_SPARK : undefined} sub="No reply in 24 hours or more" />
+    </div>
+  );
+}
+
+/* ============================================================
+   TODAY'S INSIGHT
+   ============================================================ */
+function InsightPanel() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-charcoal-950 p-6 lg:p-7 text-white shadow-pop">
+      <div className="absolute -right-6 -top-10 text-brand-500/20"><Icon name="sparkles" size={160} /></div>
+      <div className="relative max-w-3xl">
+        <div className="flex items-center gap-2 text-brand-300 text-[11px] font-bold uppercase tracking-wider mb-3">
+          <Icon name="bulb" size={14} />Today's insight
+        </div>
+        <h3 className="font-display text-xl font-bold leading-snug mb-2.5">{INSIGHT.headline}</h3>
+        <p className="text-[13.5px] text-charcoal-200 leading-relaxed">{INSIGHT.body}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   TEAM PERFORMANCE GRID
+   ============================================================ */
+function TeamCard({ team }) {
+  return (
+    <div className="bg-white rounded-2xl border border-ink-200/60 p-5 shadow-card">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full ${TEAM_DOT[team.key]}`} />
+          <span className="font-display font-bold text-ink-900">{team.name}</span>
+        </div>
+        <TrendBadge pct={team.deltaPct} goodWhenDown={true} />
+      </div>
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div>
+          <div className="font-display text-lg font-bold text-ink-900 tabular">{fmt(team.weeklyEmails)}</div>
+          <div className="text-[11px] text-ink-400">Volume</div>
+        </div>
+        <div>
+          <div className="font-display text-lg font-bold text-ink-900 tabular">{team.avgHours}h</div>
+          <div className="text-[11px] text-ink-400">Avg reply</div>
+        </div>
+        <div>
+          <div className={`font-display text-lg font-bold tabular ${team.key === "Logistics" || team.key === "QC" ? "text-coral-600" : "text-ink-900"}`}>
+            {CASES.filter((c) => c.team === team.key && c.status !== "Resolved").length}
+          </div>
+          <div className="text-[11px] text-ink-400">Complaints</div>
+        </div>
+      </div>
+      <Sparkline data={team.sparkline} color={team.color} />
+      <div className="text-[10.5px] text-ink-400 mt-1.5">Avg response time — last 7 days</div>
+    </div>
+  );
+}
+
+/* ============================================================
+   OVERVIEW PAGE
+   ============================================================ */
+function OverviewPage({ teamFilter, setTeamFilter }) {
+  return (
+    <div className="space-y-6 fade-in">
+      <KPIRow teamFilter={teamFilter} />
+      <InsightPanel />
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-display text-base font-bold text-ink-900">Team performance</h3>
+          <span className="text-xs text-ink-400">This week vs last week</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {TEAMS.map((t) => <TeamCard key={t.key} team={t} />)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   COMPLAINTS & STUCK THREADS PAGE — the centerpiece
+   ============================================================ */
+function CaseListRow({ c, active, onClick }) {
+  const s = STATUS_STYLE[c.status];
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left px-4 py-3.5 border-b border-ink-200/50 transition-colors ${
+        active ? "bg-brand-50/70 border-l-[3px] border-l-brand-600 pl-[13px]" : "hover:bg-ink-100/40 border-l-[3px] border-l-transparent"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="font-semibold text-[13.5px] text-ink-900 truncate">{c.client}</span>
+        <SeverityChip level={c.severity} />
+      </div>
+      <div className="flex items-center gap-1.5 text-xs text-ink-500 mb-1.5">
+        <span className={`w-1.5 h-1.5 rounded-full ${TEAM_DOT[c.team]}`} />
+        {c.team} &middot; {c.employee}
+      </div>
+      <div className="flex items-center justify-between">
+        <StatusTag status={c.status} />
+        <span className={`text-[11px] font-mono-num ${c.status === "Stuck" ? "text-coral-600 font-semibold" : "text-ink-400"}`}>
+          {formatElapsedShort(c.hoursElapsed)}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function CaseDetail({ c }) {
+  if (!c) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-24 text-ink-400">
+        <Icon name="caseFile" size={34} className="mb-3 text-ink-300" />
+        <p className="text-sm">No cases match these filters.</p>
+      </div>
+    );
+  }
+  const s = STATUS_STYLE[c.status];
+  const diagnosisLabel = c.status === "Resolved" ? "How it was resolved" : c.status === "Stuck" ? "Why it's stuck" : "Current status";
+  const actionLabel = c.status === "Resolved" ? "Outcome" : "Suggested next step";
+  return (
+    <div key={c.id} className="case-in">
+      <div className="flex items-start justify-between gap-4 mb-1">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="font-mono-num text-[11px] font-semibold text-ink-400">#{c.id}</span>
+            <SeverityChip level={c.severity} size="md" />
+          </div>
+          <h2 className="font-display text-2xl font-extrabold text-ink-900">{c.client}</h2>
+        </div>
+        <div className={`flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold ${s.text} bg-white ring-1 ring-inset ${c.status === "Stuck" ? "ring-coral-500/25" : c.status === "Resolved" ? "ring-good-600/25" : "ring-brand-500/25"}`}>
+          <Icon name={s.icon} size={15} />{c.status}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-ink-500 mt-3 pb-5 mb-5 border-b border-ink-200/60">
+        <span className="flex items-center gap-2"><Avatar name={c.employee} team={c.team} size={22} />{c.employee} &middot; {c.team}</span>
+        <span className="flex items-center gap-1.5"><Icon name="flag" size={14} className="text-ink-400" />{c.category[0].toUpperCase() + c.category.slice(1)}</span>
+        <span className="flex items-center gap-1.5"><Icon name="clock" size={14} className="text-ink-400" />
+          {c.status === "Resolved" ? `Resolved after ${formatElapsedLong(c.hoursElapsed)}` : `Stuck for ${formatElapsedLong(c.hoursElapsed)}`}
+        </span>
+      </div>
+
+      <div className="space-y-4">
+        <section>
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-ink-400 mb-2">What the complaint is about</h4>
+          <p className="text-[14.5px] text-ink-700 leading-relaxed">{c.description}</p>
+        </section>
+
+        <section className="rounded-xl bg-ink-100/50 border border-ink-200/70 p-4">
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-ink-500 mb-2 flex items-center gap-1.5">
+            <Icon name={c.status === "Stuck" ? "alertOctagon" : c.status === "Resolved" ? "checkCircle" : "loader"} size={13} />
+            {diagnosisLabel}
+          </h4>
+          <p className="text-[14.5px] text-ink-700 leading-relaxed">{c.diagnosis}</p>
+        </section>
+
+        <section className="rounded-xl bg-brand-800 p-4 text-white">
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-brand-200 mb-2 flex items-center gap-1.5">
+            <Icon name="target" size={13} />{actionLabel}
+          </h4>
+          <p className="text-[14.5px] leading-relaxed">{c.action}</p>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function ComplaintsPage({ teamFilter, setTeamFilter }) {
+  const [severity, setSeverity] = useState("All");
+  const [status, setStatus] = useState("All");
+  const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
+
+  const filtered = useMemo(() => {
+    return [...CASES]
+      .filter((c) => teamFilter === "All" || c.team === teamFilter)
+      .filter((c) => severity === "All" || c.severity === severity)
+      .filter((c) => status === "All" || c.status === status)
+      .filter((c) => {
+        const q = query.trim().toLowerCase();
+        if (!q) return true;
+        return c.client.toLowerCase().includes(q) || c.employee.toLowerCase().includes(q) || c.description.toLowerCase().includes(q);
+      })
+      .sort((a, b) => {
+        const rank = { Stuck: 0, "In Progress": 1, Resolved: 2 };
+        return rank[a.status] - rank[b.status] || b.hoursElapsed - a.hoursElapsed;
+      });
+  }, [teamFilter, severity, status, query]);
+
+  useEffect(() => {
+    if (filtered.length === 0) { setSelectedId(null); return; }
+    if (!filtered.some((c) => c.id === selectedId)) setSelectedId(filtered[0].id);
+    // eslint-disable-next-line
+  }, [filtered]);
+
+  const selected = filtered.find((c) => c.id === selectedId) || null;
+
+  return (
+    <div className="space-y-4 fade-in">
+      <div className="bg-white rounded-2xl border border-ink-200/60 p-4 shadow-card flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" />
+          <input
+            value={query} onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search client, employee, or issue&hellip;"
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-ink-200 bg-white focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400"
+          />
+        </div>
+        <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)}
+          className="text-sm font-medium rounded-lg border border-ink-200 py-2 pl-3 pr-8 bg-white focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400">
+          <option value="All">All teams</option>
+          {TEAM_KEYS.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <div className="flex items-center gap-1 bg-ink-100/60 rounded-lg p-1">
+          {["All", "High", "Medium", "Low"].map((s) => (
+            <button key={s} onClick={() => setSeverity(s)}
+              className={`px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors ${severity === s ? "bg-white shadow-sm text-ink-900" : "text-ink-500 hover:text-ink-700"}`}>
+              {s}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 bg-ink-100/60 rounded-lg p-1">
+          {["All", "Stuck", "In Progress", "Resolved"].map((s) => (
+            <button key={s} onClick={() => setStatus(s)}
+              className={`px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors ${status === s ? "bg-white shadow-sm text-ink-900" : "text-ink-500 hover:text-ink-700"}`}>
+              {s}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-ink-400 ml-auto shrink-0">{filtered.length} of {CASES.length}</span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-4 items-start">
+        <div className="bg-white rounded-2xl border border-ink-200/60 shadow-card overflow-hidden">
+          <div className="max-h-[640px] overflow-y-auto">
+            {filtered.map((c) => (
+              <CaseListRow key={c.id} c={c} active={c.id === selectedId} onClick={() => setSelectedId(c.id)} />
+            ))}
+            {filtered.length === 0 && <div className="px-4 py-10 text-center text-ink-400 text-sm">No cases match these filters.</div>}
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-ink-200/60 shadow-card p-6 lg:p-7 min-h-[500px]">
+          <CaseDetail c={selected} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   EMPLOYEES PAGE
+   ============================================================ */
+function EmployeeCallout({ title, list, tone }) {
+  const good = tone === "good";
+  return (
+    <div className="bg-white rounded-2xl border border-ink-200/60 shadow-card p-5">
+      <h4 className={`text-[11px] font-bold uppercase tracking-wider mb-3 ${good ? "text-good-700" : "text-coral-700"}`}>{title}</h4>
+      <div className="divide-y divide-ink-200/50">
+        {list.map((e, i) => (
+          <div key={e.name} className="flex items-center gap-3 py-2">
+            <span className={`w-4 text-xs font-bold ${good ? "text-good-600" : "text-coral-600"}`}>{i + 1}</span>
+            <Avatar name={e.name} team={e.team} size={26} />
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-semibold text-ink-900 truncate">{e.name}</div>
+              <div className="text-[11px] text-ink-400">{e.team}</div>
+            </div>
+            <div className={`text-sm font-bold tabular ${good ? "text-good-700" : "text-coral-700"}`}>{e.avgResponseHours}h</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const EMP_COLUMNS = [
+  { key: "name", label: "Employee", numeric: false },
+  { key: "team", label: "Team", numeric: false },
+  { key: "emailsHandled", label: "Emails handled", numeric: true },
+  { key: "avgResponseHours", label: "Avg response", numeric: true },
+  { key: "complaintsFlagged", label: "Complaints", numeric: true },
+  { key: "resolutionRate", label: "Resolution rate", numeric: true },
+];
+
+function EmployeesPage({ teamFilter, setTeamFilter }) {
+  const [sortKey, setSortKey] = useState("avgResponseHours");
+  const [sortDir, setSortDir] = useState("asc");
+  const [query, setQuery] = useState("");
+
+  const sorted = useMemo(() => [...EMPLOYEES].sort((a, b) => a.avgResponseHours - b.avgResponseHours), []);
+  const top5 = sorted.slice(0, 5);
+  const bottom5 = sorted.slice(-5).reverse();
+
+  const rows = useMemo(() => {
+    let list = EMPLOYEES.filter((e) => teamFilter === "All" || e.team === teamFilter);
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      list = list.filter((e) => e.name.toLowerCase().includes(q));
+    }
+    list = [...list].sort((a, b) => {
+      const av = a[sortKey], bv = b[sortKey];
+      const cmp = typeof av === "string" ? av.localeCompare(bv) : av - bv;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return list;
+  }, [teamFilter, query, sortKey, sortDir]);
+
+  function toggleSort(key) {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir(key === "resolutionRate" ? "desc" : "asc"); }
+  }
+
+  return (
+    <div className="space-y-6 fade-in">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <EmployeeCallout title="Top 5 fastest responders" list={top5} tone="good" />
+        <EmployeeCallout title="Bottom 5 slowest responders" list={bottom5} tone="bad" />
+      </div>
+
+      <div className="bg-white rounded-2xl border border-ink-200/60 shadow-card overflow-hidden">
+        <div className="p-4 flex flex-wrap items-center gap-3 border-b border-ink-200/60">
+          <div className="relative flex-1 min-w-[200px]">
+            <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search employee&hellip;"
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-ink-200 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400" />
+          </div>
+          <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)}
+            className="text-sm font-medium rounded-lg border border-ink-200 py-2 pl-3 pr-8 bg-white focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400">
+            <option value="All">All teams</option>
+            {TEAM_KEYS.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <span className="text-xs text-ink-400 ml-auto">{rows.length} of {EMPLOYEES.length}</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[720px]">
+            <thead className="bg-ink-100/40 text-ink-500 text-xs uppercase tracking-wide border-b border-ink-200/60">
+              <tr>
+                {EMP_COLUMNS.map((col) => (
+                  <th key={col.key} className={`font-semibold px-4 py-3 select-none cursor-pointer hover:text-ink-800 ${col.numeric ? "text-right" : "text-left"}`}
+                    onClick={() => toggleSort(col.key)}>
+                    <span className={`inline-flex items-center gap-1 ${col.numeric ? "flex-row-reverse" : ""}`}>
+                      {col.label}
+                      <Icon name={sortKey === col.key ? (sortDir === "asc" ? "sortUp" : "sortDown") : "sort"} size={11} className={sortKey === col.key ? "text-brand-600" : "text-ink-300"} />
+                    </span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ink-200/50">
+              {rows.map((e) => (
+                <tr key={e.name} className="hover:bg-ink-100/30 transition-colors">
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar name={e.name} team={e.team} size={26} />
+                      <span className="font-medium text-ink-900 whitespace-nowrap">{e.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <span className="inline-flex items-center gap-1.5 text-ink-600">
+                      <span className={`w-1.5 h-1.5 rounded-full ${TEAM_DOT[e.team]}`} />{e.team}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular text-ink-700">{fmt(e.emailsHandled)}</td>
+                  <td className={`px-4 py-2.5 text-right tabular font-semibold ${e.avgResponseHours > 5 ? "text-coral-600" : e.avgResponseHours < 2 ? "text-good-700" : "text-ink-800"}`}>{e.avgResponseHours}h</td>
+                  <td className={`px-4 py-2.5 text-right tabular ${e.complaintsFlagged > 0 ? "text-ink-800 font-medium" : "text-ink-400"}`}>{e.complaintsFlagged}</td>
+                  <td className="px-4 py-2.5 text-right tabular text-ink-700">{e.resolutionRate}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   RESPONSE TIME ANALYSIS PAGE
+   ============================================================ */
+function DistributionChart({ teamFilter }) {
+  const data = useMemo(() => distributionFor(teamFilter), [teamFilter]);
+  return (
+    <div className="bg-white rounded-2xl border border-ink-200/60 p-5 shadow-card">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="font-display font-bold text-ink-900">Response time distribution</h3>
+        <span className="text-xs text-ink-400">{teamFilter === "All" ? "All teams" : teamFilter}</span>
+      </div>
+      <p className="text-xs text-ink-500 mb-4">How quickly threads got a first reply this week</p>
+      <div style={{ width: "100%", height: 240 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="#EEECF7" />
+            <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#7C7793" }} axisLine={{ stroke: "#DCD9EB" }} tickLine={false} />
+            <YAxis tick={{ fontSize: 12, fill: "#7C7793" }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip cursor={{ fill: "#F7F6FB" }} contentStyle={{ borderRadius: 10, border: "1px solid #E6E3EF", fontSize: 13 }} formatter={(v) => [fmt(v), "Threads"]} />
+            <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+              {data.map((d, i) => <Cell key={d.label} fill={BIN_COLOR[i]} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function TeamComparisonChart() {
+  const data = TEAMS.map((t) => ({ team: t.key, "This week": t.avgHours, "Last week": t.avgHoursLast }));
+  return (
+    <div className="bg-white rounded-2xl border border-ink-200/60 p-5 shadow-card">
+      <h3 className="font-display font-bold text-ink-900 mb-1">Team-by-team comparison</h3>
+      <p className="text-xs text-ink-500 mb-4">Average response time, this week vs last week</p>
+      <div style={{ width: "100%", height: 240 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 4, right: 8, left: -12, bottom: 0 }} barGap={4}>
+            <CartesianGrid vertical={false} stroke="#EEECF7" />
+            <XAxis dataKey="team" tick={{ fontSize: 12, fill: "#7C7793" }} axisLine={{ stroke: "#DCD9EB" }} tickLine={false} />
+            <YAxis tick={{ fontSize: 12, fill: "#7C7793" }} axisLine={false} tickLine={false} unit="h" />
+            <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid #E6E3EF", fontSize: 13 }} />
+            <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
+            <Bar dataKey="Last week" fill="#C7C3D6" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="This week" radius={[6, 6, 0, 0]}>
+              {data.map((d) => <Cell key={d.team} fill={TEAM_COLOR[d.team]} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function FourteenDayTrend() {
+  const data = Array.from({ length: 14 }, (_, i) => {
+    const row = { day: i - 13 };
+    TEAM_KEYS.forEach((t) => { row[t] = TEAM_TREND_14[t][i]; });
+    return row;
+  });
+  return (
+    <div className="bg-white rounded-2xl border border-ink-200/60 p-5 shadow-card">
+      <h3 className="font-display font-bold text-ink-900 mb-1">14-day trend, by team</h3>
+      <p className="text-xs text-ink-500 mb-4">Average response time (hours), each point is one day</p>
+      <div style={{ width: "100%", height: 280 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="#EEECF7" />
+            <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#7C7793" }} axisLine={{ stroke: "#DCD9EB" }} tickLine={false}
+              tickFormatter={(v) => (v === 0 ? "today" : `${v}d`)} />
+            <YAxis tick={{ fontSize: 12, fill: "#7C7793" }} axisLine={false} tickLine={false} unit="h" />
+            <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid #E6E3EF", fontSize: 13 }} labelFormatter={(v) => (v === 0 ? "Today" : `${Math.abs(v)} days ago`)} />
+            <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
+            <ReferenceLine x={-2} stroke="#B4740A" strokeDasharray="4 3" strokeOpacity={0.5} />
+            {TEAM_KEYS.map((t) => (
+              <Line key={t} type="monotone" dataKey={t} stroke={TEAM_COLOR[t]} strokeWidth={2.2} dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function ResponseTimePage({ teamFilter }) {
+  return (
+    <div className="space-y-4 fade-in">
+      <DistributionChart teamFilter={teamFilter} />
+      <TeamComparisonChart />
+      <FourteenDayTrend />
+    </div>
+  );
+}
+
+/* ============================================================
+   SETTINGS PAGE (static)
+   ============================================================ */
+function SettingsRow({ label, desc, control }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-4 border-b border-ink-200/50 last:border-0">
+      <div>
+        <div className="text-sm font-semibold text-ink-800">{label}</div>
+        <div className="text-xs text-ink-400 mt-0.5">{desc}</div>
+      </div>
+      {control}
+    </div>
+  );
+}
+function Toggle({ on }) {
+  return (
+    <span className={`inline-flex w-9 h-5 rounded-full items-center px-0.5 shrink-0 ${on ? "bg-brand-600 justify-end" : "bg-ink-200 justify-start"}`}>
+      <span className="w-4 h-4 rounded-full bg-white shadow" />
+    </span>
+  );
+}
+function SettingsPage() {
+  return (
+    <div className="fade-in max-w-2xl">
+      <div className="bg-white rounded-2xl border border-ink-200/60 shadow-card p-6">
+        <h3 className="font-display font-bold text-ink-900 mb-1">Workspace settings</h3>
+        <p className="text-xs text-ink-500 mb-2">Static preview — configuration isn't wired up in this demo.</p>
+        <div className="mt-4">
+          <SettingsRow label="Daily digest email" desc="Send Today's Insight to team leads every morning at 8:00" control={<Toggle on={true} />} />
+          <SettingsRow label="Stuck-thread alerts" desc="Notify a channel when a thread passes 24 hours with no reply" control={<Toggle on={true} />} />
+          <SettingsRow label="Auto-escalate High severity" desc="Ping the team lead automatically for new High severity cases" control={<Toggle on={false} />} />
+          <SettingsRow label="Weekly leadership summary" desc="A rollup of team performance sent every Monday" control={<Toggle on={true} />} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   SHELL — sidebar, top bar, page routing
+   ============================================================ */
+const NAV_ITEMS = [
+  { key: "overview", label: "Overview", icon: "grid" },
+  { key: "complaints", label: "Complaints & Stuck Threads", icon: "caseFile" },
+  { key: "employees", label: "Employees", icon: "users" },
+  { key: "response", label: "Response Time Analysis", icon: "activity" },
+  { key: "settings", label: "Settings", icon: "settings" },
+];
+const PAGE_META = {
+  overview: { title: "Overview", sub: "How Colorsperse is handling client email, today" },
+  complaints: { title: "Complaints & Stuck Threads", sub: "Every flagged case, why it's stuck, and what to do next" },
+  employees: { title: "Employees", sub: "Response performance across all 60 team members" },
+  response: { title: "Response Time Analysis", sub: "Distribution, team comparison, and the 14-day trend" },
+  settings: { title: "Settings", sub: "Workspace preferences" },
+};
+
+function Logo({ size = 30 }) {
+  return (
+    <span className="rounded-xl flex items-center justify-center shrink-0" style={{ width: size, height: size, background: "linear-gradient(135deg,#6C5CD9,#4B3FBE)" }}>
+      <svg width={size * 0.56} height={size * 0.56} viewBox="0 0 24 24" fill="none">
+        <path d="M9 18.5c0-5.5 3-9 7.5-9 3 0 5 1.6 5 4" stroke="white" strokeWidth="2.3" fill="none" strokeLinecap="round" />
+        <circle cx="19.5" cy="7.5" r="2" fill="#F2A93B" />
+      </svg>
+    </span>
+  );
+}
+
+function Sidebar({ page, setPage, mobile = false }) {
+  return (
+    <aside className={mobile
+      ? "flex flex-col w-72 shrink-0 bg-charcoal-950 h-full"
+      : "hidden lg:flex lg:flex-col w-64 shrink-0 bg-charcoal-950 h-screen sticky top-0"}>
+      <div className="flex items-center gap-2.5 px-5 h-16 border-b border-white/[0.06]">
+        <Logo />
+        <div className="leading-tight">
+          <div className="font-display font-extrabold text-white text-[15px] tracking-tight">Colorsperse</div>
+          <div className="text-[10.5px] text-charcoal-400 font-medium uppercase tracking-wider">Intelligence</div>
+        </div>
+      </div>
+      <nav className="flex-1 px-3 py-4 space-y-0.5">
+        {NAV_ITEMS.map((item) => {
+          const isActive = page === item.key;
+          return (
+            <button key={item.key} onClick={() => setPage(item.key)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition-colors ${
+                isActive ? "bg-brand-600 text-white shadow-pop" : "text-charcoal-200 hover:bg-white/[0.06] hover:text-white"
+              }`}>
+              <Icon name={item.icon} size={16} />
+              <span className="flex-1 text-left leading-snug">{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+      <div className="p-4 border-t border-white/[0.06]">
+        <div className="flex items-center gap-2 text-[11px] text-charcoal-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-good-600" />Synced 4 min ago
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function TopBar({ page, teamFilter, setTeamFilter, onMenu }) {
+  const meta = PAGE_META[page];
+  const showFilter = page !== "settings";
+  return (
+    <header className="sticky top-0 z-10 bg-[#F7F6FB]/90 backdrop-blur border-b border-ink-200/60 px-5 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3 min-w-0">
+        <button onClick={onMenu} className="lg:hidden w-8 h-8 rounded-lg border border-ink-200 flex items-center justify-center text-ink-500 shrink-0">
+          <Icon name="grid" size={16} />
+        </button>
+        <div className="min-w-0">
+          <h1 className="font-display text-lg font-bold text-ink-900 leading-tight truncate">{meta.title}</h1>
+          <p className="text-xs text-ink-400 truncate hidden sm:block">{meta.sub}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="hidden md:flex items-center gap-1.5 text-xs font-medium text-ink-500 bg-ink-100/70 px-3 py-1.5 rounded-full">
+          <Icon name="clock" size={13} />Sat, 18 Jul 2026
+        </div>
+        {showFilter && (
+          <div className="relative">
+            <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)}
+              className="text-sm font-medium rounded-lg border border-ink-200 py-2 pl-3 pr-8 bg-white focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400 appearance-none">
+              <option value="All">All teams</option>
+              {TEAM_KEYS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <Icon name="chevronDown" size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400" />
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function App() {
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState("overview");
+  const [teamFilter, setTeamFilter] = useState("All");
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => { const t = setTimeout(() => setLoading(false), 600); return () => clearTimeout(t); }, []);
+
+  return (
+    <div className="flex bg-[#F7F6FB] min-h-screen font-body">
+      <Sidebar page={page} setPage={setPage} />
+
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="absolute inset-0 bg-charcoal-950/50" onClick={() => setMobileOpen(false)} />
+          <div className="absolute left-0 top-0 h-full w-72 shadow-xl">
+            <Sidebar mobile page={page} setPage={(k) => { setPage(k); setMobileOpen(false); }} />
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0">
+        <TopBar page={page} teamFilter={teamFilter} setTeamFilter={setTeamFilter} onMenu={() => setMobileOpen(true)} />
+        <main className="p-5 lg:p-8 max-w-[1400px]">
+          {loading ? <PageSkeleton /> : (
+            <React.Fragment>
+              {page === "overview" && <OverviewPage teamFilter={teamFilter} setTeamFilter={setTeamFilter} />}
+              {page === "complaints" && <ComplaintsPage teamFilter={teamFilter} setTeamFilter={setTeamFilter} />}
+              {page === "employees" && <EmployeesPage teamFilter={teamFilter} setTeamFilter={setTeamFilter} />}
+              {page === "response" && <ResponseTimePage teamFilter={teamFilter} />}
+              {page === "settings" && <SettingsPage />}
+            </React.Fragment>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
