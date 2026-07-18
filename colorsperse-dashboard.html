@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colorsperse Email Intelligence — Overview</title>
+<meta name="description" content="Internal analytics dashboard monitoring client email response times, complaints, and team performance for Colorsperse.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234338ca'/%3E%3Cpath d='M8 12a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v3.5a4 4 0 0 1-4 4h-5l-4.2 3.4a.6.6 0 0 1-1-.47V19.5H12a4 4 0 0 1-4-4Z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/prop-types@15/prop-types.min.js" crossorigin></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+<style>
+  html,body{height:100%;}
+  body{font-family:'Inter',ui-sans-serif,system-ui,-apple-system,sans-serif;background:#f8fafc;-webkit-font-smoothing:antialiased;}
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:8px;}
+  ::-webkit-scrollbar-thumb:hover{background:#cbd5e1;}
+  .fade-in{animation:fadeIn .35s ease both;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  select{background-image:none;}
+  #root{min-height:100vh;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useEffect } = React;
+const {
+  ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip, Cell
+} = Recharts;
+
+/* ============================================================
+   ICONS — minimal inline SVGs, consistent 1.7px stroke
+   ============================================================ */
+function Icon({ name, size = 18, className = "" }) {
+  const P = {
+    grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
+    users: '<path d="M16.5 20v-1.8a3.7 3.7 0 0 0-3.7-3.7H7.7A3.7 3.7 0 0 0 4 18.2V20"/><circle cx="10.6" cy="7.6" r="3.6"/><path d="M21 20v-1.8a3.7 3.7 0 0 0-2.7-3.55"/><path d="M15.3 4.15a3.6 3.6 0 0 1 0 7.1"/>',
+    mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2.2"/><path d="m4.5 7 7.5 6 7.5-6"/>',
+    userCheck: '<path d="M14.5 20v-1.8a3.7 3.7 0 0 0-3.7-3.7H6.7A3.7 3.7 0 0 0 3 18.2V20"/><circle cx="8.6" cy="7.6" r="3.6"/><path d="m16 12 2 2 3.5-3.5"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V19.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H4.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H10.6A1.7 1.7 0 0 0 11.64 3H11.65a1.7 1.7 0 0 0 1.04 1.56V4.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.02a1.7 1.7 0 0 0 1.56 1.04H19.5a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.04Z" stroke-width="0" fill="none"/>',
+    chevronDown: '<path d="m6 9 6 6 6-6"/>',
+    arrowUp: '<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>',
+    arrowDown: '<path d="M12 5v14"/><path d="m6 13 6 6 6-6"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 2"/>',
+    alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><circle cx="12" cy="16.2" r="0.25" fill="currentColor"/>',
+    check: '<path d="M12 2.5 4.5 6v6c0 5 3.4 8.4 7.5 9.4 4.1-1 7.5-4.4 7.5-9.4V6L12 2.5Z" fill="currentColor" fill-opacity=".12"/><path d="m8.8 12 2.2 2.2 4.2-4.4"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+    sparkles: '<path d="M12 3 13.4 8.6 19 10 13.4 11.4 12 17 10.6 11.4 5 10 10.6 8.6Z" fill="currentColor" stroke="none"/><path d="M19 3.5 19.6 5.4 21.5 6 19.6 6.6 19 8.5 18.4 6.6 16.5 6 18.4 5.4Z" fill="currentColor" stroke="none"/>',
+    bell: '<path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 6 1.5 6h-15S6 13.5 6 9Z"/><path d="M10 19a2 2 0 0 0 4 0"/>',
+    inbox: '<path d="M4 13h4.2l1.2 2.4h5.2L15.8 13H20"/><rect x="3.5" y="6" width="17" height="14" rx="2"/>',
+  };
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"
+      dangerouslySetInnerHTML={{ __html: P[name] || "" }} />
+  );
+}
+
+/* ============================================================
+   MOCK DATA
+   ============================================================ */
+const TEAM_KEYS = ["Sales", "Finance", "Logistics", "QC"];
+const TEAM_COLOR = {
+  Sales: "#4338ca",
+  Finance: "#0f766e",
+  Logistics: "#dc2626",
+  QC: "#d97706",
+};
+const TEAM_DOT = {
+  Sales: "bg-indigo-600",
+  Finance: "bg-teal-600",
+  Logistics: "bg-red-600",
+  QC: "bg-amber-600",
+};
+
+const EMPLOYEE_NAMES = {
+  Sales: ["Priya Nandakumar","Marcus Webb","Elena Torres","Rohan Malhotra","Chloe Bennett","Tariq Osei","Ingrid Solberg","Devon Clarke","Meera Iyer","Jonas Kessler","Aisha Farouk","Lucas Hartmann","Naomi Cruz","Felix Andrade","Simone Duval"],
+  Finance: ["Anjali Rao","Graham Pierce","Wei Chen","Isabela Souza","Tom Fairbanks","Ravi Chandran","Nora Lindqvist","Samuel Okafor","Petra Vogel","Daniel Ibrahim","Lena Marchetti","Owen Fitzgerald","Yuki Tanaka","Clara Jensen","Nikhil Bhatt"],
+  Logistics: ["Carlos Mendoza","Fatima Sheikh","Brett Coleman","Sana Malik","Diego Alvarez","Holly Prescott","Kwame Asante","Renata Silva","Aidan Murphy","Leila Haddad","Gustav Bergman","Priyanka Sethi","Connor Blake","Ines Fontaine","Manuel Rios"],
+  QC: ["Sophia Lindgren","Arjun Deshmukh","Rachel Voss","Ehsan Karimi","Bianca Ferreira","Trevor Lynch","Mei Ling Tan","Oscar Novak","Divya Krishnan","Patrick Doyle","Hana Suzuki","Callum Reid","Zara Ahmed","Bruno Conti","Wendy Zhou"],
+};
+
+const CLIENTS = [
+  "Anchorline Traders","Baxter & Vance Holdings","Cascade Textiles Co.","Delmore Foods Group",
+  "Ellison Retail Partners","Fenwick Marine Supply","Granite Peak Constructors","Halcyon Pharma",
+  "Ironclad Manufacturing","Junction Freight Partners","Kestrel Apparel Co.","Lonestar Beverages",
+  "Meridian Components","Norwood Furniture Co.","Oakfield Agritech","Pinnacle Electronics",
+  "Quarryhill Materials","Silverline Packaging",
+];
+
+// Weekly volume + response-time baselines. This is the story:
+// Logistics is slowest & most complained about, Finance is fastest,
+// Sales is average but improving, QC has spiked the last 2 days.
+const TEAM_STATS = {
+  Sales: { weeklyEmails: 420, avgHoursThisWeek: 2.6, avgHoursLastWeek: 2.9, sparkline: [3.1, 3.0, 2.9, 2.8, 2.7, 2.6, 2.6] },
+  Finance: { weeklyEmails: 380, avgHoursThisWeek: 1.3, avgHoursLastWeek: 1.35, sparkline: [1.4, 1.35, 1.3, 1.35, 1.3, 1.28, 1.3] },
+  Logistics: { weeklyEmails: 410, avgHoursThisWeek: 6.4, avgHoursLastWeek: 5.1, sparkline: [5.0, 5.2, 5.6, 5.9, 6.1, 6.3, 6.4] },
+  QC: { weeklyEmails: 260, avgHoursThisWeek: 3.9, avgHoursLastWeek: 3.0, sparkline: [2.8, 2.9, 3.0, 3.1, 3.4, 4.4, 4.6] },
+};
+
+// Response-time distribution bins per team (sums to weeklyEmails per team).
+const DIST_BINS = ["<1h", "1-4h", "4-24h", "24-48h", ">48h"];
+const TEAM_DIST = {
+  Sales: [140, 180, 90, 8, 2],
+  Finance: [210, 120, 45, 5, 0],
+  Logistics: [35, 95, 180, 70, 30],
+  QC: [55, 85, 80, 30, 10],
+};
+
+// client, team, employee, category, snippet, severity, hoursSinceReply, daysAgo
+const RAW_COMPLAINTS = [
+  // Logistics — 13, worst team: slow, mostly Medium/High, several very stuck
+  ["Junction Freight Partners","Logistics","Carlos Mendoza","shipment delay","Shipment delayed 6 days with no tracking update","High",39,1],
+  ["Ironclad Manufacturing","Logistics","Fatima Sheikh","quality issue","Received batch does not meet spec sheet","High",52,2],
+  ["Granite Peak Constructors","Logistics","Brett Coleman","shipment delay","Order still not dispatched a week after promised date","High",61,3],
+  ["Quarryhill Materials","Logistics","Sana Malik","no response","No reply in 4 days despite two follow-ups","High",96,4],
+  ["Silverline Packaging","Logistics","Diego Alvarez","shipment delay","Delivery missed the committed window again","Medium",28,1],
+  ["Meridian Components","Logistics","Holly Prescott","quality issue","Packaging damaged on arrival, third time this month","Medium",19,1],
+  ["Norwood Furniture Co.","Logistics","Kwame Asante","wrong information","Given incorrect delivery timeline by phone","Medium",14,0],
+  ["Oakfield Agritech","Logistics","Renata Silva","shipment delay","Tracking link shows delivered but nothing arrived","High",44,2],
+  ["Cascade Textiles Co.","Logistics","Aidan Murphy","no response","Client escalated after being ignored for a week","High",168,6],
+  ["Halcyon Pharma","Logistics","Leila Haddad","shipment delay","Partial shipment sent, remainder still missing","High",22,0],
+  ["Delmore Foods Group","Logistics","Gustav Bergman","quality issue","Product defect rate higher than agreed threshold","High",9,0],
+  ["Baxter & Vance Holdings","Logistics","Priyanka Sethi","shipment delay","Delivery rescheduled twice this week","Low",5,0],
+  ["Anchorline Traders","Logistics","Connor Blake","wrong information","Wrong warehouse address used for dispatch","High",17,0],
+  // QC — 9, spike in the last 2 days
+  ["Pinnacle Electronics","QC","Sophia Lindgren","quality issue","Second batch this month failed inspection","High",6,0],
+  ["Ellison Retail Partners","QC","Arjun Deshmukh","quality issue","Defect rate spiked to 12% on latest order","High",11,0],
+  ["Kestrel Apparel Co.","QC","Rachel Voss","quality issue","Stitching defects across an entire pallet","Medium",15,1],
+  ["Fenwick Marine Supply","QC","Ehsan Karimi","no response","Support thread went cold after initial acknowledgment","High",30,1],
+  ["Lonestar Beverages","QC","Bianca Ferreira","quality issue","Labeling mismatch flagged by client's QA team","Medium",8,0],
+  ["Junction Freight Partners","QC","Trevor Lynch","wrong information","Certificate of compliance had wrong batch number","Medium",20,2],
+  ["Norwood Furniture Co.","QC","Mei Ling Tan","quality issue","Finish quality below sample approved pre-order","Low",12,2],
+  ["Halcyon Pharma","QC","Oscar Novak","quality issue","Cold-chain packaging failure on arrival","High",26,3],
+  ["Cascade Textiles Co.","QC","Divya Krishnan","billing discrepancy","Quality re-inspection fee wasn't pre-approved","Low",4,0],
+  // Sales — 5, average, mostly Low/Medium
+  ["Meridian Components","Sales","Priya Nandakumar","wrong information","Quoted wrong SKU pricing on renewal","Medium",10,1],
+  ["Kestrel Apparel Co.","Sales","Marcus Webb","no response","Follow-up email sat unanswered for 2 days","Low",18,1],
+  ["Oakfield Agritech","Sales","Elena Torres","wrong information","Contract terms don't match what was emailed","Medium",7,0],
+  ["Delmore Foods Group","Sales","Rohan Malhotra","billing discrepancy","Discount promised on call missing from invoice","Low",5,0],
+  ["Ironclad Manufacturing","Sales","Chloe Bennett","no response","Second reminder sent, still awaiting reply","Medium",21,1],
+  // Finance — 4, fastest, mostly Low
+  ["Baxter & Vance Holdings","Finance","Anjali Rao","billing discrepancy","Invoice amount doesn't match the quoted price","Medium",3,0],
+  ["Granite Peak Constructors","Finance","Graham Pierce","billing discrepancy","Charged twice for the same order","Low",2,0],
+  ["Lonestar Beverages","Finance","Wei Chen","billing discrepancy","Credit note never applied to the account","Low",6,1],
+  ["Silverline Packaging","Finance","Isabela Souza","wrong information","PO number mismatch delayed processing","Low",4,0],
+];
+
+const COMPLAINTS = RAW_COMPLAINTS.map((row, i) => ({
+  id: "c" + (i + 1),
+  client: row[0], team: row[1], employee: row[2], category: row[3],
+  snippet: row[4], severity: row[5], hoursSinceReply: row[6], daysAgo: row[7],
+}));
+
+/* ---- Derived, so every number on screen is consistent with the data above ---- */
+function jitter(i, spread) { return (((i * 37) % 17) - 8) / 8 * spread; }
+
+const EMPLOYEES = TEAM_KEYS.flatMap((team) => {
+  const names = EMPLOYEE_NAMES[team];
+  const stat = TEAM_STATS[team];
+  const spread = { Sales: 1.1, Finance: 0.5, Logistics: 2.6, QC: 1.8 }[team];
+  const perHead = stat.weeklyEmails / names.length;
+  return names.map((name, i) => {
+    const hours = Math.max(0.4, +(stat.avgHoursThisWeek + jitter(i, spread)).toFixed(1));
+    const emails = Math.max(8, Math.round(perHead + jitter(i, perHead * 0.35)));
+    const complaintsFlagged = COMPLAINTS.filter((c) => c.employee === name).length;
+    return { name, team, avgResponseHours: hours, emailsHandled: emails, complaintsFlagged };
+  });
+});
+
+const TEAMS = TEAM_KEYS.map((team) => {
+  const stat = TEAM_STATS[team];
+  const deltaPct = ((stat.avgHoursThisWeek - stat.avgHoursLastWeek) / stat.avgHoursLastWeek) * 100;
+  return {
+    key: team,
+    name: team,
+    color: TEAM_COLOR[team],
+    weeklyEmails: stat.weeklyEmails,
+    avgHours: stat.avgHoursThisWeek,
+    deltaPct,
+    complaints: COMPLAINTS.filter((c) => c.team === team).length,
+    sparkline: stat.sparkline.map((v, i) => ({ i, v })),
+  };
+});
+
+const TOTAL_EMAILS_WEEK = TEAM_KEYS.reduce((s, t) => s + TEAM_STATS[t].weeklyEmails, 0);
+const TOTAL_EMAILS_TODAY = 268;
+const OPEN_COMPLAINTS = COMPLAINTS.length;
+const OPEN_COMPLAINTS_LAST_WEEK = 24;
+const AVG_HOURS_THIS_WEEK = TEAM_KEYS.reduce((s, t) => s + TEAM_STATS[t].avgHoursThisWeek * TEAM_STATS[t].weeklyEmails, 0) / TOTAL_EMAILS_WEEK;
+const AVG_HOURS_LAST_WEEK = TEAM_KEYS.reduce((s, t) => s + TEAM_STATS[t].avgHoursLastWeek * TEAM_STATS[t].weeklyEmails, 0) / TOTAL_EMAILS_WEEK;
+const AVG_HOURS_DELTA_PCT = ((AVG_HOURS_THIS_WEEK - AVG_HOURS_LAST_WEEK) / AVG_HOURS_LAST_WEEK) * 100;
+const STUCK_BY_TEAM = TEAM_KEYS.reduce((acc, t) => {
+  const bins = TEAM_DIST[t];
+  acc[t] = bins[3] + bins[4]; // 24-48h + >48h
+  return acc;
+}, {});
+const STUCK_TOTAL = Object.values(STUCK_BY_TEAM).reduce((a, b) => a + b, 0);
+const STUCK_LAST_WEEK = 137;
+
+function distributionFor(teamFilter) {
+  const teams = teamFilter === "All" ? TEAM_KEYS : [teamFilter];
+  return DIST_BINS.map((label, i) => ({
+    label,
+    count: teams.reduce((s, t) => s + TEAM_DIST[t][i], 0),
+  }));
+}
+
+const BIN_COLOR = ["#0f766e", "#4338ca", "#d97706", "#ea580c", "#dc2626"];
+
+function buildDigest() {
+  const logisticsHighToday = COMPLAINTS.filter(
+    (c) => c.team === "Logistics" && c.severity === "High" && c.daysAgo === 0
+  ).length;
+  const qcSpike = COMPLAINTS.filter((c) => c.team === "QC" && c.daysAgo <= 1).length;
+  const fastest = [...TEAMS].sort((a, b) => a.avgHours - b.avgHours)[0];
+  const mostImproved = [...TEAMS].sort((a, b) => a.deltaPct - b.deltaPct)[0];
+  return {
+    headline: `${logisticsHighToday} new high-severity complaint${logisticsHighToday === 1 ? "" : "s"} in Logistics today`,
+    body: `Logistics is dragging the week down — ${TEAM_STATS.Logistics.avgHoursThisWeek}h average reply time (up from ${TEAM_STATS.Logistics.avgHoursLastWeek}h) and ${STUCK_BY_TEAM.Logistics} threads stuck past 24 hours, more than any other team. QC saw ${qcSpike} complaints land in just the last 2 days, worth a quick check-in with that team lead. On the other side, ${fastest.name} stays the benchmark at ${fastest.avgHours}h average, and ${mostImproved.name} is trending ${Math.abs(mostImproved.deltaPct).toFixed(0)}% faster than last week. Company-wide, average response time is ${AVG_HOURS_DELTA_PCT >= 0 ? "up" : "down"} ${Math.abs(AVG_HOURS_DELTA_PCT).toFixed(0)}% versus last week, driven almost entirely by Logistics and QC.`,
+  };
+}
+const DIGEST = buildDigest();
+
+/* ============================================================
+   SMALL HELPERS
+   ============================================================ */
+function formatAgo(hours) {
+  if (hours < 24) return `${hours}h ago`;
+  const d = Math.floor(hours / 24);
+  const h = hours % 24;
+  return h ? `${d}d ${h}h ago` : `${d}d ago`;
+}
+function fmt(n) { return n.toLocaleString("en-US"); }
+
+const SEVERITY_STYLE = {
+  High: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20",
+  Medium: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20",
+  Low: "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/15",
+};
+
+function SeverityTag({ level }) {
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${SEVERITY_STYLE[level]}`}>
+      {level}
+    </span>
+  );
+}
+
+function TrendBadge({ pct, goodWhenDown = true, suffix = "vs last week" }) {
+  const isUp = pct >= 0;
+  const good = goodWhenDown ? !isUp : isUp;
+  const cls = good ? "text-teal-700 bg-teal-50" : "text-red-700 bg-red-50";
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-1.5 py-0.5 rounded-md ${cls}`}>
+      <Icon name={isUp ? "arrowUp" : "arrowDown"} size={12} />
+      {Math.abs(pct).toFixed(0)}% {suffix}
+    </span>
+  );
+}
+
+/* ============================================================
+   SPARKLINE
+   ============================================================ */
+function Sparkline({ data, color, height = 34 }) {
+  return (
+    <div style={{ width: "100%", height }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 4, right: 2, bottom: 0, left: 2 }}>
+          <Line type="monotone" dataKey="v" stroke={color} strokeWidth={2} dot={false} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ============================================================
+   SKELETONS
+   ============================================================ */
+function SkeletonBlock({ className }) {
+  return <div className={`animate-pulse bg-slate-200/80 rounded-lg ${className}`} />;
+}
+function DashboardSkeleton() {
+  return (
+    <div className="p-6 lg:p-8 space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[0, 1, 2, 3].map((i) => <SkeletonBlock key={i} className="h-28" />)}
+      </div>
+      <SkeletonBlock className="h-24" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <SkeletonBlock className="h-72 lg:col-span-2" />
+        <SkeletonBlock className="h-72" />
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   KPI CARDS
+   ============================================================ */
+function KPICard({ icon, label, value, sub, trend }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-3">
+        <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+          <Icon name={icon} size={18} />
+        </div>
+        {trend}
+      </div>
+      <div className="text-2xl font-bold text-slate-900 tracking-tight">{value}</div>
+      <div className="text-sm text-slate-500 mt-1">{label}</div>
+      {sub && <div className="text-xs text-slate-400 mt-2">{sub}</div>}
+    </div>
+  );
+}
+
+function KPIBar({ teamFilter }) {
+  const scope = teamFilter === "All" ? TEAM_KEYS : [teamFilter];
+  const weekly = scope.reduce((s, t) => s + TEAM_STATS[t].weeklyEmails, 0);
+  const openComplaints = COMPLAINTS.filter((c) => teamFilter === "All" || c.team === teamFilter).length;
+  const avgHours = scope.reduce((s, t) => s + TEAM_STATS[t].avgHoursThisWeek * TEAM_STATS[t].weeklyEmails, 0) / weekly;
+  const avgHoursLast = scope.reduce((s, t) => s + TEAM_STATS[t].avgHoursLastWeek * TEAM_STATS[t].weeklyEmails, 0) / weekly;
+  const avgDelta = ((avgHours - avgHoursLast) / avgHoursLast) * 100;
+  const stuck = scope.reduce((s, t) => s + STUCK_BY_TEAM[t], 0);
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <KPICard
+        icon="mail"
+        label={teamFilter === "All" ? "Emails handled this week" : `${teamFilter} emails this week`}
+        value={fmt(weekly)}
+        sub={teamFilter === "All" ? `${TOTAL_EMAILS_TODAY} today` : null}
+      />
+      <KPICard
+        icon="alert"
+        label="Open complaints"
+        value={fmt(openComplaints)}
+        trend={teamFilter === "All" && <TrendBadge pct={((OPEN_COMPLAINTS - OPEN_COMPLAINTS_LAST_WEEK) / OPEN_COMPLAINTS_LAST_WEEK) * 100} goodWhenDown={true} />}
+        sub={`${COMPLAINTS.filter(c => (teamFilter === "All" || c.team === teamFilter) && c.severity === "High").length} flagged High severity`}
+      />
+      <KPICard
+        icon="clock"
+        label="Avg response time"
+        value={`${avgHours.toFixed(1)}h`}
+        trend={<TrendBadge pct={avgDelta} goodWhenDown={true} />}
+      />
+      <KPICard
+        icon="bell"
+        label="Stuck threads (24h+)"
+        value={fmt(stuck)}
+        trend={teamFilter === "All" && <TrendBadge pct={((STUCK_TOTAL - STUCK_LAST_WEEK) / STUCK_LAST_WEEK) * 100} goodWhenDown={true} />}
+        sub="No reply in 24 hours or more"
+      />
+    </div>
+  );
+}
+
+/* ============================================================
+   DAILY DIGEST
+   ============================================================ */
+function DigestCard() {
+  return (
+    <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl p-6 text-white shadow-sm relative overflow-hidden">
+      <div className="absolute -right-8 -top-8 opacity-10">
+        <Icon name="sparkles" size={140} />
+      </div>
+      <div className="relative">
+        <div className="flex items-center gap-2 text-indigo-200 text-xs font-semibold uppercase tracking-wider mb-2">
+          <Icon name="sparkles" size={14} />
+          Today's digest
+        </div>
+        <h3 className="text-lg font-semibold mb-2">{DIGEST.headline}</h3>
+        <p className="text-sm text-indigo-100 leading-relaxed max-w-3xl">{DIGEST.body}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   RESPONSE TIME DISTRIBUTION CHART
+   ============================================================ */
+function DistributionChart({ teamFilter }) {
+  const data = useMemo(() => distributionFor(teamFilter), [teamFilter]);
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm h-full">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="font-semibold text-slate-900">Response time distribution</h3>
+        <span className="text-xs text-slate-400">{teamFilter === "All" ? "All teams" : teamFilter}</span>
+      </div>
+      <p className="text-xs text-slate-500 mb-4">How quickly threads got a first reply this week</p>
+      <div style={{ width: "100%", height: 220 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="#eef2f7" />
+            <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
+            <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip
+              cursor={{ fill: "#f8fafc" }}
+              contentStyle={{ borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 13 }}
+              formatter={(v) => [fmt(v), "Threads"]}
+            />
+            <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+              {data.map((d, i) => <Cell key={d.label} fill={BIN_COLOR[i]} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   EMPLOYEE LEADERBOARD
+   ============================================================ */
+function LeaderboardRow({ rank, emp, fastest }) {
+  return (
+    <div className="py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`shrink-0 w-4 text-xs font-bold ${fastest ? "text-teal-600" : "text-red-600"}`}>{rank}</span>
+          <span className="text-sm font-medium text-slate-800 truncate" title={emp.name}>{emp.name}</span>
+        </div>
+        <span className={`shrink-0 text-sm font-semibold ${fastest ? "text-teal-700" : "text-red-700"}`}>{emp.avgResponseHours}h</span>
+      </div>
+      <div className="text-xs text-slate-400 pl-6">{emp.team}</div>
+    </div>
+  );
+}
+
+function Leaderboard() {
+  const sorted = useMemo(() => [...EMPLOYEES].sort((a, b) => a.avgResponseHours - b.avgResponseHours), []);
+  const top5 = sorted.slice(0, 5);
+  const bottom5 = sorted.slice(-5).reverse();
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm h-full">
+      <h3 className="font-semibold text-slate-900 mb-1">Employee leaderboard</h3>
+      <p className="text-xs text-slate-500 mb-3">By average response time this week</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-teal-600 mb-1">Fastest</div>
+          <div className="divide-y divide-slate-100">
+            {top5.map((e, i) => <LeaderboardRow key={e.name} rank={i + 1} emp={e} fastest />)}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-red-600 mb-1">Slowest</div>
+          <div className="divide-y divide-slate-100">
+            {bottom5.map((e, i) => <LeaderboardRow key={e.name} rank={i + 1} emp={e} fastest={false} />)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   OVERVIEW TAB
+   ============================================================ */
+function OverviewTab({ teamFilter }) {
+  return (
+    <div className="space-y-6 fade-in">
+      <KPIBar teamFilter={teamFilter} />
+      <DigestCard />
+      <DistributionChart teamFilter={teamFilter} />
+      <Leaderboard />
+    </div>
+  );
+}
+
+/* ============================================================
+   TEAMS TAB
+   ============================================================ */
+function TeamCard({ team, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`text-left bg-white rounded-xl border p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 ${active ? "border-indigo-400 ring-2 ring-indigo-100" : "border-slate-200"}`}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full ${TEAM_DOT[team.key]}`} />
+          <span className="font-semibold text-slate-900">{team.name}</span>
+        </div>
+        <TrendBadge pct={team.deltaPct} goodWhenDown={true} suffix="" />
+      </div>
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div>
+          <div className="text-lg font-bold text-slate-900">{fmt(team.weeklyEmails)}</div>
+          <div className="text-xs text-slate-400">Emails</div>
+        </div>
+        <div>
+          <div className="text-lg font-bold text-slate-900">{team.avgHours}h</div>
+          <div className="text-xs text-slate-400">Avg reply</div>
+        </div>
+        <div>
+          <div className={`text-lg font-bold ${team.complaints >= 8 ? "text-red-600" : "text-slate-900"}`}>{team.complaints}</div>
+          <div className="text-xs text-slate-400">Complaints</div>
+        </div>
+      </div>
+      <Sparkline data={team.sparkline} color={team.color} />
+      <div className="text-[11px] text-slate-400 mt-1">Avg response time — last 7 days</div>
+    </button>
+  );
+}
+
+function TeamsTab({ teamFilter, setTeamFilter }) {
+  return (
+    <div className="space-y-6 fade-in">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {TEAMS.map((t) => (
+          <TeamCard
+            key={t.key}
+            team={t}
+            active={teamFilter === t.key}
+            onClick={() => setTeamFilter(teamFilter === t.key ? "All" : t.key)}
+          />
+        ))}
+      </div>
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <h3 className="font-semibold text-slate-900 mb-1">What's driving this</h3>
+        <p className="text-sm text-slate-500 leading-relaxed max-w-3xl">
+          Logistics carries the heaviest complaint load and the slowest replies of any team, and it's getting worse week over week.
+          QC is smaller in volume but its complaint rate just spiked in the last two days. Finance is the fastest team by a wide
+          margin, and Sales — while average overall — is the only team trending faster than last week.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   COMPLAINTS TAB
+   ============================================================ */
+function ComplaintsTab({ teamFilter, setTeamFilter }) {
+  const [severity, setSeverity] = useState("All");
+  const [query, setQuery] = useState("");
+
+  const rows = useMemo(() => {
+    return [...COMPLAINTS]
+      .filter((c) => teamFilter === "All" || c.team === teamFilter)
+      .filter((c) => severity === "All" || c.severity === severity)
+      .filter((c) => {
+        const q = query.trim().toLowerCase();
+        if (!q) return true;
+        return c.client.toLowerCase().includes(q) || c.employee.toLowerCase().includes(q) || c.snippet.toLowerCase().includes(q);
+      })
+      .sort((a, b) => a.daysAgo - b.daysAgo || a.hoursSinceReply - b.hoursSinceReply);
+  }, [teamFilter, severity, query]);
+
+  return (
+    <div className="space-y-4 fade-in">
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[220px]">
+          <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search client, employee, or issue…"
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
+          />
+        </div>
+        <select
+          value={teamFilter}
+          onChange={(e) => setTeamFilter(e.target.value)}
+          className="text-sm rounded-lg border border-slate-200 py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400"
+        >
+          <option value="All">All teams</option>
+          {TEAM_KEYS.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+          {["All", "High", "Medium", "Low"].map((s) => (
+            <button
+              key={s}
+              onClick={() => setSeverity(s)}
+              className={`px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors ${severity === s ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700"}`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-slate-400 ml-auto">{rows.length} of {COMPLAINTS.length}</span>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="max-h-[560px] overflow-auto">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead className="sticky top-0 bg-slate-50 text-slate-500 text-xs uppercase tracking-wide border-b border-slate-200">
+              <tr>
+                <th className="text-left font-semibold px-4 py-3">Client</th>
+                <th className="text-left font-semibold px-4 py-3">Team &amp; owner</th>
+                <th className="text-left font-semibold px-4 py-3">Issue</th>
+                <th className="text-left font-semibold px-4 py-3">Severity</th>
+                <th className="text-left font-semibold px-4 py-3">Last reply</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((c) => (
+                <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{c.client}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${TEAM_DOT[c.team]}`} />
+                      <div>
+                        <div className="text-slate-700">{c.employee}</div>
+                        <div className="text-xs text-slate-400">{c.team}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 max-w-xs">
+                    <div className="truncate">{c.snippet}</div>
+                    <div className="text-xs text-slate-400 capitalize">{c.category}</div>
+                  </td>
+                  <td className="px-4 py-3"><SeverityTag level={c.severity} /></td>
+                  <td className={`px-4 py-3 whitespace-nowrap ${c.hoursSinceReply >= 24 ? "text-red-600 font-semibold" : "text-slate-500"}`}>
+                    {formatAgo(c.hoursSinceReply)}
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr><td colSpan="5" className="px-4 py-10 text-center text-slate-400 text-sm">No complaints match these filters.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   SHELL — sidebar, top bar, tabs
+   ============================================================ */
+const NAV_ITEMS = [
+  { key: "overview", label: "Overview", icon: "grid", active: true },
+  { key: "teams", label: "Teams", icon: "users", active: true },
+  { key: "complaints", label: "Complaints", icon: "mail", active: true },
+  { key: "employees", label: "Employees", icon: "userCheck", active: false },
+  { key: "settings", label: "Settings", icon: "settings", active: false },
+];
+
+function Sidebar({ tab, setTab, toast, mobile = false }) {
+  return (
+    <aside className={mobile
+      ? "flex flex-col w-64 shrink-0 bg-white h-full"
+      : "hidden lg:flex lg:flex-col w-60 shrink-0 border-r border-slate-200 bg-white h-screen sticky top-0"}>
+      <div className="flex items-center gap-2.5 px-5 h-16 border-b border-slate-100">
+        <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+          <Icon name="inbox" size={17} />
+        </div>
+        <div className="leading-tight">
+          <div className="font-bold text-slate-900 text-[15px] tracking-tight">Colorsperse</div>
+          <div className="text-[11px] text-slate-400 font-medium">Email Intelligence</div>
+        </div>
+      </div>
+      <nav className="flex-1 px-3 py-4 space-y-0.5">
+        {NAV_ITEMS.map((item) => {
+          const isActive = tab === item.key;
+          return (
+            <button
+              key={item.key}
+              onClick={() => (item.active ? setTab(item.key) : toast(item.label))}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isActive ? "bg-indigo-50 text-indigo-700" : item.active ? "text-slate-600 hover:bg-slate-50" : "text-slate-350 text-slate-400 cursor-default"
+              }`}
+            >
+              <Icon name={item.icon} size={17} />
+              <span className="flex-1 text-left">{item.label}</span>
+              {!item.active && <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Soon</span>}
+            </button>
+          );
+        })}
+      </nav>
+      <div className="p-4 border-t border-slate-100">
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+          Data refreshed 4 min ago
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+const TAB_META = {
+  overview: { title: "Overview", sub: "Company-wide client email performance, today" },
+  teams: { title: "Teams", sub: "How Sales, Finance, Logistics, and QC are handling client email" },
+  complaints: { title: "Complaints", sub: "Flagged threads that need attention" },
+};
+
+function TopBar({ tab, teamFilter, setTeamFilter, onMenu }) {
+  const meta = TAB_META[tab];
+  return (
+    <header className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-slate-200 px-5 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3 min-w-0">
+        <button onClick={onMenu} className="lg:hidden w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500">
+          <Icon name="grid" size={16} />
+        </button>
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold text-slate-900 leading-tight truncate">{meta.title}</h1>
+          <p className="text-xs text-slate-400 truncate hidden sm:block">{meta.sub}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="hidden md:flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
+          <Icon name="clock" size={13} />
+          Sat, 18 Jul 2026
+        </div>
+        <div className="relative">
+          <select
+            value={teamFilter}
+            onChange={(e) => setTeamFilter(e.target.value)}
+            className="text-sm font-medium rounded-lg border border-slate-200 py-2 pl-3 pr-8 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 appearance-none"
+          >
+            <option value="All">All teams</option>
+            {TEAM_KEYS.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <Icon name="chevronDown" size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Toast({ message }) {
+  if (!message) return null;
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-lg fade-in">
+      {message} is coming soon
+    </div>
+  );
+}
+
+function App() {
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("overview");
+  const [teamFilter, setTeamFilter] = useState("All");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 650);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!toastMsg) return;
+    const t = setTimeout(() => setToastMsg(null), 2200);
+    return () => clearTimeout(t);
+  }, [toastMsg]);
+
+  return (
+    <div className="flex bg-slate-50 min-h-screen">
+      <Sidebar tab={tab} setTab={setTab} toast={setToastMsg} />
+
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setMobileOpen(false)} />
+          <div className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl">
+            <Sidebar mobile tab={tab} setTab={(k) => { setTab(k); setMobileOpen(false); }} toast={setToastMsg} />
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0">
+        <TopBar tab={tab} teamFilter={teamFilter} setTeamFilter={setTeamFilter} onMenu={() => setMobileOpen(true)} />
+        <main className="p-5 lg:p-8 max-w-[1400px]">
+          {loading ? (
+            <DashboardSkeleton />
+          ) : (
+            <React.Fragment>
+              {tab === "overview" && <OverviewTab teamFilter={teamFilter} />}
+              {tab === "teams" && <TeamsTab teamFilter={teamFilter} setTeamFilter={setTeamFilter} />}
+              {tab === "complaints" && <ComplaintsTab teamFilter={teamFilter} setTeamFilter={setTeamFilter} />}
+            </React.Fragment>
+          )}
+        </main>
+      </div>
+      <Toast message={toastMsg} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
