@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#FF9EC4">
+<title>🚗 Road Trip to Revdanda!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+:root{
+  --pink:#FF9EC4; --peach:#FFC97A; --mint:#A6E9DB; --sky:#BFE3FF; --ink:#3B2E4A;
+  --omkar:#FF6B6B; --akshay:#22B8A6; --yash:#FFB03B; --saguna:#9B7BFF;
+  --card-bg:rgba(255,255,255,.72); --card-border:rgba(255,255,255,.9);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; padding:0; overflow-x:hidden; width:100%;}
+body{
+  font-family:'Nunito',sans-serif; color:var(--ink); min-height:100vh;
+  background:
+    radial-gradient(ellipse at 15% -10%, #FFF3D0 0%, transparent 55%),
+    radial-gradient(ellipse at 100% 0%, #C9F7FF 0%, transparent 50%),
+    linear-gradient(180deg, #FFE7F0 0%, #FFF3DC 45%, #DFF7F1 100%);
+  background-attachment:fixed;
+  position:relative;
+}
+h1,h2,h3,.font-display{font-family:'Baloo 2',cursive;}
+
+/* floating background decorations */
+.sky-deco{position:fixed; inset:0; overflow:hidden; z-index:0; pointer-events:none;}
+.sky-deco span{position:absolute; font-size:28px; opacity:.5; filter:drop-shadow(0 2px 3px rgba(0,0,0,.05)); animation:drift linear infinite;}
+@keyframes drift{ from{transform:translateX(-10vw) translateY(0);} to{transform:translateX(110vw) translateY(-10px);} }
+@keyframes bob{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-7px);} }
+@keyframes pulseRing{ 0%{transform:scale(.6); opacity:.65;} 100%{transform:scale(2.4); opacity:0;} }
+@keyframes fallSpin{ to{ transform:translateY(110vh) rotate(540deg); opacity:0; } }
+@keyframes dashMove{ to{ background-position:-80px 0; } }
+@keyframes popIn{ from{opacity:0; transform:scale(.85) translateY(8px);} to{opacity:1; transform:scale(1) translateY(0);} }
+
+.wrap{position:relative; z-index:1; max-width:960px; margin:0 auto; padding:14px 14px 40px;}
+
+/* header */
+.app-header{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 4px 10px;}
+.title-block h1{margin:0; font-size:26px; line-height:1.1; font-weight:800; background:linear-gradient(90deg,#FF6FA5,#FFA24C 50%,#22B8A6); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.title-block .subtitle{margin:2px 0 0; font-size:13px; font-weight:600; color:#7a6a8a;}
+.header-actions{display:flex; align-items:center; gap:8px;}
+.icon-btn{width:38px; height:38px; border-radius:50%; border:none; background:var(--card-bg); border:1px solid var(--card-border); display:flex; align-items:center; justify-content:center; font-size:18px; cursor:pointer; box-shadow:0 3px 10px rgba(80,40,90,.12);}
+.icon-btn:active{transform:scale(.92);}
+.sync-pill{display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; padding:6px 10px; border-radius:999px; background:var(--card-bg); border:1px solid var(--card-border); white-space:nowrap;}
+.sync-pill .dot{width:7px; height:7px; border-radius:50%; background:#bbb;}
+.sync-pill.connecting .dot{background:#FFB03B; animation:blink 1s infinite;}
+.sync-pill.synced .dot{background:#2ecc71; box-shadow:0 0 6px #2ecc71;}
+.sync-pill.offline .dot{background:#e74c3c;}
+.sync-pill.local .dot{background:#999;}
+@keyframes blink{50%{opacity:.3;}}
+
+/* road divider */
+.road{height:14px; border-radius:8px; margin:6px 0 16px; background:
+  linear-gradient(#5b5064,#5b5064) padding-box,
+  repeating-linear-gradient(90deg, #fff 0 26px, transparent 26px 52px) 0 0/80px 4px no-repeat;
+  position:relative; background-color:#5b5064;
+}
+.road::after{content:''; position:absolute; top:50%; left:0; right:0; height:3px; transform:translateY(-50%);
+  background-image:repeating-linear-gradient(90deg, #FFE082 0 24px, transparent 24px 48px);
+  background-repeat:repeat-x; animation:dashMove 1.1s linear infinite;
+}
+
+/* leaderboard */
+.leaderboard{display:flex; gap:10px; overflow-x:auto; padding:4px 2px 14px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;}
+.leaderboard::-webkit-scrollbar{display:none;}
+.car-card{flex:0 0 auto; width:172px; scroll-snap-align:start; background:var(--card-bg); border:1px solid var(--card-border); border-radius:20px; padding:12px; backdrop-filter:blur(6px); box-shadow:0 6px 18px rgba(80,40,90,.10); animation:popIn .4s ease both;}
+.car-card.leading{box-shadow:0 0 0 2px #FFD84D, 0 8px 22px rgba(255,180,20,.35);}
+.car-card.stale{opacity:.55;}
+.car-card .top-row{display:flex; align-items:center; gap:8px;}
+.car-avatar{width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:20px; background:var(--c); box-shadow:0 3px 8px rgba(0,0,0,.15); flex-shrink:0;}
+.car-name{font-family:'Baloo 2'; font-weight:700; font-size:15px; line-height:1.1;}
+.car-medal{font-size:16px; margin-left:auto;}
+.car-status{font-size:11px; font-weight:700; color:#8a7a98; margin-top:6px;}
+.car-dist{font-family:'Baloo 2'; font-size:19px; font-weight:700; margin-top:4px;}
+.progress-track{height:8px; border-radius:6px; background:rgba(0,0,0,.08); margin-top:8px; overflow:hidden;}
+.progress-fill{height:100%; width:0%; border-radius:6px; background:var(--c);}
+.car-meta{font-size:10.5px; color:#9385a0; margin-top:6px; display:flex; justify-content:space-between;}
+
+/* map */
+.map-shell{position:relative; border-radius:22px; overflow:hidden; box-shadow:0 10px 28px rgba(80,40,90,.18); border:4px solid #fff;}
+#map{height:52vh; min-height:340px; width:100%; background:#dff3ee;}
+.recenter-btn{position:absolute; right:12px; bottom:14px; z-index:500; width:44px; height:44px; border-radius:50%; background:#fff; border:none; box-shadow:0 4px 14px rgba(0,0,0,.2); font-size:19px; cursor:pointer;}
+.recenter-btn:active{transform:scale(.9);}
+.map-hint{font-size:11.5px; text-align:center; color:#8a7a98; margin-top:8px; font-weight:600;}
+
+/* leaflet marker styling */
+.car-pin{display:flex; flex-direction:column; align-items:center; animation:bob 2.6s ease-in-out infinite;}
+.car-pin .bubble{width:38px; height:38px; border-radius:50% 50% 50% 4px; transform:rotate(45deg); background:var(--c); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,.28); border:2.5px solid #fff;}
+.car-pin .bubble span{transform:rotate(-45deg); font-size:17px;}
+.dest-pin{display:flex; align-items:center; justify-content:center; position:relative; width:50px; height:50px;}
+.dest-pin .ring{position:absolute; width:40px; height:40px; border-radius:50%; border:3px solid #FF5D8F; animation:pulseRing 2s ease-out infinite;}
+.dest-pin .flag{font-size:26px; filter:drop-shadow(0 3px 4px rgba(0,0,0,.25)); z-index:2;}
+.leaflet-tooltip.car-label{background:rgba(59,46,74,.85); color:#fff; border:none; border-radius:8px; font-weight:700; font-size:11px; font-family:'Nunito',sans-serif; padding:2px 7px; box-shadow:none;}
+.leaflet-tooltip.car-label::before{border-top-color:rgba(59,46,74,.85);}
+
+/* toast + confetti */
+.toast-stack{position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:3000; display:flex; flex-direction:column; gap:8px; width:min(92vw,420px);}
+.toast{background:#fff; border-radius:16px; padding:12px 16px; box-shadow:0 8px 24px rgba(0,0,0,.2); font-weight:700; font-family:'Baloo 2'; text-align:center; animation:popIn .35s ease both;}
+.confetti-layer{position:fixed; inset:0; pointer-events:none; z-index:2900; overflow:hidden;}
+.confetti-piece{position:absolute; top:-30px; font-size:20px; animation:fallSpin 2.6s ease-in forwards;}
+
+/* role modal */
+.modal-overlay{position:fixed; inset:0; z-index:4000; background:linear-gradient(180deg, rgba(255,231,240,.97), rgba(223,247,241,.97)); display:flex; align-items:center; justify-content:center; padding:20px;}
+.modal-card{background:#fff; border-radius:26px; padding:26px 22px; max-width:420px; width:100%; box-shadow:0 20px 50px rgba(80,40,90,.3); text-align:center; animation:popIn .4s ease both;}
+.modal-card h2{margin:2px 0 4px; font-size:23px;}
+.modal-card p{font-size:13.5px; color:#7a6a8a; margin:0 0 18px; font-weight:600;}
+.role-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.role-chip{border:2px solid transparent; background:#F6F1FA; border-radius:18px; padding:14px 6px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-weight:700; font-family:'Baloo 2'; font-size:14px; transition:transform .15s;}
+.role-chip:active{transform:scale(.95);}
+.role-chip .car-avatar{width:44px; height:44px; font-size:22px;}
+.role-chip.selected{border-color:var(--c); background:color-mix(in srgb, var(--c) 14%, white);}
+.watch-chip{margin-top:12px; width:100%; border:2px dashed #cfc3dc; background:transparent; border-radius:16px; padding:12px; font-weight:700; font-family:'Baloo 2'; font-size:14px; cursor:pointer; color:#7a6a8a;}
+.watch-chip:active{transform:scale(.97);}
+.modal-footer-hint{font-size:11px; color:#a597b0; margin-top:14px; font-weight:600;}
+
+.loc-banner{display:none; align-items:center; gap:10px; background:#FFF4D6; border:1px solid #FFE199; border-radius:14px; padding:10px 12px; font-size:12.5px; font-weight:700; color:#8a6a1a; margin-bottom:12px;}
+.loc-banner button{margin-left:auto; border:none; background:#FFB03B; color:#fff; border-radius:10px; padding:6px 10px; font-weight:800; font-size:11.5px; cursor:pointer;}
+
+footer{text-align:center; font-size:11px; color:#a597b0; font-weight:600; margin-top:18px;}
+
+@media(min-width:700px){
+  #map{height:60vh;}
+  .car-card{width:190px;}
+}
+</style>
+</head>
+<body>
+
+<div class="sky-deco" id="skyDeco"></div>
+<div class="confetti-layer" id="confettiLayer"></div>
+<div class="toast-stack" id="toastStack"></div>
+
+<div class="modal-overlay" id="roleModal">
+  <div class="modal-card">
+    <div style="font-size:38px;">🚗💨🏖️</div>
+    <h2 class="font-display">Who's driving?</h2>
+    <p>Pick your car to start sharing your live location. Just visiting? Tap "I'm just watching" instead.</p>
+    <div class="role-grid" id="roleGrid"></div>
+    <button class="watch-chip" id="watchBtn">👀 I'm just watching</button>
+    <div class="modal-footer-hint">Everyone who opens this page sees all 4 cars live, synced in real time.</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="app-header">
+    <div class="title-block">
+      <h1>🚗 Road Trip to Revdanda!</h1>
+      <p class="subtitle">Live tracking Omkar · Akshay · Yash · Saguna 🏖️</p>
+    </div>
+    <div class="header-actions">
+      <div class="sync-pill local" id="syncPill"><span class="dot"></span><span class="sync-label">Local</span></div>
+      <button class="icon-btn" id="settingsBtn" title="Change role">⚙️</button>
+    </div>
+  </div>
+
+  <div class="road"></div>
+
+  <div class="loc-banner" id="locBanner">
+    <span>📍 Location access needed to share your car's spot.</span>
+    <button id="locRetryBtn">Enable</button>
+  </div>
+
+  <div class="leaderboard" id="leaderboard"></div>
+
+  <div class="map-shell">
+    <div id="map"></div>
+    <button class="recenter-btn" id="recenterBtn" title="Recenter">🎯</button>
+  </div>
+  <p class="map-hint">🏁 Finish line: Revdanda Beach, Alibaug</p>
+
+  <footer>Made with 💗 for the crew heading to Revdanda</footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+<script>
+/* ============================================================
+   Reuses the same Firebase Realtime Database project already
+   wired up for the Smash Circuit site (open read/write rules,
+   fine for a private trip among friends). Data lives under a
+   separate "roadTrip2026" key so it never touches the badminton
+   data at the root.
+   ============================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDcwX_rdXWtNZA78boejGiMnk-MpWurUao",
+  authDomain: "hv-smash-circuit-2026.firebaseapp.com",
+  databaseURL: "https://hv-smash-circuit-2026-default-rtdb.firebaseio.com",
+  projectId: "hv-smash-circuit-2026",
+  storageBucket: "hv-smash-circuit-2026.firebasestorage.app",
+  messagingSenderId: "986825721696",
+  appId: "1:986825721696:web:1f05f4cc1e130949284005"
+};
+const DB_ROOT = 'roadTrip2026';
+
+const DEST = { lat: 18.5432, lng: 72.9427, name: 'Revdanda Beach, Alibaug' };
+const CARS = [
+  { id:'omkar',  name:'Omkar',  emoji:'🚙', color:'var(--omkar)'  },
+  { id:'akshay', name:'Akshay', emoji:'🚗', color:'var(--akshay)' },
+  { id:'yash',   name:'Yash',   emoji:'🚕', color:'var(--yash)'   },
+  { id:'saguna', name:'Saguna', emoji:'🚓', color:'var(--saguna)' },
+];
+const CAR_BY_ID = Object.fromEntries(CARS.map(c=>[c.id,c]));
+const ARRIVE_KM = 0.5;
+const WRITE_INTERVAL_MS = 8000;
+
+let myRole = localStorage.getItem('roadtrip_role'); // car id or 'watch' or null
+let db = null, carsRef = null, startsRef = null;
+let syncMode = 'local';
+let remoteCars = {};   // id -> {lat,lng,heading,speed,accuracy,updatedAt,name}
+let starts = {};       // id -> {lat,lng,distKm}
+let myLastFix = null;  // freshest local geolocation fix for own car
+let lastWriteAt = 0;
+let startAttempted = false;
+let watchId = null;
+let map, destMarker, carMarkers = {}, carLines = {};
+let arrivedSet = new Set();
+let prevLeaderId = null;
+
+/* ---------- geo helpers ---------- */
+function haversineKm(lat1,lon1,lat2,lon2){
+  const R = 6371;
+  const dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function fmtDist(km){
+  if(km == null || isNaN(km)) return '—';
+  return km < 1 ? Math.round(km*1000)+' m' : km.toFixed(1)+' km';
+}
+function timeAgo(ts){
+  if(!ts) return 'no signal yet';
+  const s = Math.floor((Date.now()-ts)/1000);
+  if(s < 5) return 'just now';
+  if(s < 60) return s+'s ago';
+  const m = Math.floor(s/60);
+  if(m < 60) return m+'m ago';
+  return Math.floor(m/60)+'h ago';
+}
+
+/* ---------- sky decorations ---------- */
+(function initSkyDeco(){
+  const emojis = ['☁️','☁️','🌤️','🌴','☁️'];
+  const el = document.getElementById('skyDeco');
+  emojis.forEach((e,i)=>{
+    const s = document.createElement('span');
+    s.textContent = e;
+    s.style.top = (8 + i*17) + '%';
+    s.style.left = '-10%';
+    s.style.fontSize = (22 + (i%3)*10) + 'px';
+    s.style.animationDuration = (40 + i*13) + 's';
+    s.style.animationDelay = (-i*9) + 's';
+    el.appendChild(s);
+  });
+})();
+
+/* ---------- role modal ---------- */
+function buildRoleModal(){
+  const grid = document.getElementById('roleGrid');
+  grid.innerHTML = '';
+  CARS.forEach(c=>{
+    const chip = document.createElement('div');
+    chip.className = 'role-chip' + (myRole===c.id ? ' selected' : '');
+    chip.style.setProperty('--c', c.color);
+    chip.innerHTML = `<div class="car-avatar" style="background:${c.color}">${c.emoji}</div><div>${c.name}</div>`;
+    chip.onclick = ()=> chooseRole(c.id);
+    grid.appendChild(chip);
+  });
+}
+function chooseRole(role){
+  myRole = role;
+  localStorage.setItem('roadtrip_role', role);
+  document.getElementById('roleModal').style.display = 'none';
+  startAttempted = false;
+  if(role !== 'watch') startGeolocation();
+  renderAll();
+}
+document.getElementById('watchBtn').onclick = ()=> chooseRole('watch');
+document.getElementById('settingsBtn').onclick = ()=>{
+  buildRoleModal();
+  document.getElementById('roleModal').style.display = 'flex';
+};
+
+/* ---------- geolocation ---------- */
+function startGeolocation(){
+  document.getElementById('locBanner').style.display = 'none';
+  if(!('geolocation' in navigator)){
+    showLocBanner("Your browser can't share location.");
+    return;
+  }
+  if(watchId !== null) navigator.geolocation.clearWatch(watchId);
+  watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, {
+    enableHighAccuracy:true, maximumAge:5000, timeout:20000
+  });
+}
+function showLocBanner(msg){
+  const b = document.getElementById('locBanner');
+  b.querySelector('span').textContent = '📍 ' + msg;
+  b.style.display = 'flex';
+}
+document.getElementById('locRetryBtn').onclick = startGeolocation;
+function onPositionError(err){
+  showLocBanner(err.code === 1 ? 'Location permission denied — enable it in your browser settings, or just watch the map.' : 'Could not get your location — retrying…');
+}
+function onPosition(pos){
+  const { latitude:lat, longitude:lng, heading, speed, accuracy } = pos.coords;
+  myLastFix = { lat, lng, heading, speed, accuracy, updatedAt: Date.now() };
+  remoteCars[myRole] = { ...(remoteCars[myRole]||{}), ...myLastFix, name: CAR_BY_ID[myRole].name };
+  renderAll();
+
+  if(!startAttempted && startsRef){
+    startAttempted = true;
+    startsRef.child(myRole).transaction(cur=>{
+      if(cur) return cur;
+      return { lat, lng, distKm: haversineKm(lat, lng, DEST.lat, DEST.lng) };
+    });
+  }
+
+  const now = Date.now();
+  if(carsRef && now - lastWriteAt > WRITE_INTERVAL_MS){
+    lastWriteAt = now;
+    carsRef.child(myRole).update({
+      name: CAR_BY_ID[myRole].name,
+      lat, lng,
+      heading: heading ?? null,
+      speed: speed ?? null,
+      accuracy: accuracy ?? null,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP
+    }).catch(e=>console.error('write failed', e));
+  }
+}
+
+/* ---------- firebase sync ---------- */
+function updateSyncPill(){
+  const labels = { local:'Local only', connecting:'Connecting…', synced:'Live synced', offline:'Sync error' };
+  const pill = document.getElementById('syncPill');
+  pill.className = 'sync-pill ' + syncMode;
+  pill.querySelector('.sync-label').textContent = labels[syncMode];
+}
+function initSync(){
+  syncMode = 'connecting';
+  updateSyncPill();
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.database();
+    carsRef = db.ref(DB_ROOT + '/cars');
+    startsRef = db.ref(DB_ROOT + '/starts');
+    carsRef.on('value', snap=>{
+      const data = snap.val() || {};
+      CARS.forEach(c=>{
+        if(data[c.id]) remoteCars[c.id] = { ...remoteCars[c.id], ...data[c.id] };
+      });
+      syncMode = 'synced';
+      updateSyncPill();
+      renderAll();
+    }, ()=>{ syncMode = 'offline'; updateSyncPill(); });
+    startsRef.on('value', snap=>{ starts = snap.val() || {}; renderAll(); });
+  }catch(e){
+    console.error(e);
+    syncMode = 'offline';
+    updateSyncPill();
+  }
+}
+
+/* ---------- map ---------- */
+function initMap(){
+  map = L.map('map', { zoomControl:true, attributionControl:true }).setView([DEST.lat, DEST.lng], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const destIcon = L.divIcon({
+    className:'', html:`<div class="dest-pin"><div class="ring"></div><span class="flag">🏁</span></div>`,
+    iconSize:[50,50], iconAnchor:[25,25]
+  });
+  destMarker = L.marker([DEST.lat, DEST.lng], { icon: destIcon }).addTo(map)
+    .bindTooltip('🏁 ' + DEST.name, { permanent:true, direction:'top', className:'car-label', offset:[0,-16] });
+
+  document.getElementById('recenterBtn').onclick = recenterMap;
+}
+function recenterMap(){
+  const pts = [[DEST.lat, DEST.lng]];
+  CARS.forEach(c=>{ const d = remoteCars[c.id]; if(d && d.lat) pts.push([d.lat, d.lng]); });
+  if(pts.length > 1) map.fitBounds(pts, { padding:[50,50], maxZoom:13 });
+  else map.setView([DEST.lat, DEST.lng], 10);
+}
+let didInitialFit = false;
+function updateMapMarkers(){
+  CARS.forEach(c=>{
+    const d = remoteCars[c.id];
+    if(!d || d.lat == null) return;
+    const icon = L.divIcon({
+      className:'', html:`<div class="car-pin" style="--c:${c.color}"><div class="bubble"><span>${c.emoji}</span></div></div>`,
+      iconSize:[38,50], iconAnchor:[19,44]
+    });
+    if(!carMarkers[c.id]){
+      carMarkers[c.id] = L.marker([d.lat, d.lng], { icon })
+        .addTo(map)
+        .bindTooltip(c.name, { permanent:true, direction:'bottom', className:'car-label', offset:[0,2] });
+    }else{
+      carMarkers[c.id].setLatLng([d.lat, d.lng]);
+      carMarkers[c.id].setIcon(icon);
+    }
+    if(!carLines[c.id]){
+      carLines[c.id] = L.polyline([[d.lat,d.lng],[DEST.lat,DEST.lng]], { color:getComputedColor(c.color), weight:2, dashArray:'6,8', opacity:.55 }).addTo(map);
+    }else{
+      carLines[c.id].setLatLngs([[d.lat,d.lng],[DEST.lat,DEST.lng]]);
+    }
+  });
+  if(!didInitialFit && CARS.some(c=>remoteCars[c.id] && remoteCars[c.id].lat != null)){
+    didInitialFit = true;
+    recenterMap();
+  }
+}
+function getComputedColor(varExpr){
+  const m = varExpr.match(/--([\w-]+)/);
+  if(!m) return '#999';
+  return getComputedStyle(document.documentElement).getPropertyValue('--'+m[1]).trim() || '#999';
+}
+
+/* ---------- leaderboard ---------- */
+function renderLeaderboard(){
+  const el = document.getElementById('leaderboard');
+  const rows = CARS.map(c=>{
+    const d = remoteCars[c.id];
+    const hasFix = d && d.lat != null;
+    const distKm = hasFix ? haversineKm(d.lat, d.lng, DEST.lat, DEST.lng) : null;
+    const stale = hasFix && d.updatedAt && (Date.now() - d.updatedAt > 120000);
+    const st = starts[c.id];
+    let pct = null;
+    if(hasFix && st && st.distKm > 0){
+      pct = Math.max(0, Math.min(100, ((st.distKm - distKm) / st.distKm) * 100));
+    }
+    return { car:c, hasFix, distKm, stale, pct, updatedAt: d && d.updatedAt };
+  });
+
+  const ranked = rows.filter(r=>r.hasFix).sort((a,b)=>a.distKm-b.distKm);
+  const medals = ['🥇','🥈','🥉','🏅'];
+  const rankOf = {};
+  ranked.forEach((r,i)=> rankOf[r.car.id] = i);
+
+  if(ranked[0] && ranked[0].car.id !== prevLeaderId){
+    prevLeaderId = ranked[0].car.id;
+  }
+
+  el.innerHTML = '';
+  rows.forEach(r=>{
+    const card = document.createElement('div');
+    card.className = 'car-card' + (r.hasFix && rankOf[r.car.id]===0 ? ' leading' : '') + (r.stale ? ' stale' : '');
+    card.style.setProperty('--c', getComputedColor(r.car.color));
+    card.innerHTML = `
+      <div class="top-row">
+        <div class="car-avatar" style="background:${getComputedColor(r.car.color)}">${r.car.emoji}</div>
+        <div class="car-name">${r.car.name}</div>
+        ${r.hasFix ? `<div class="car-medal">${medals[Math.min(rankOf[r.car.id],3)]}</div>` : ''}
+      </div>
+      <div class="car-dist">${r.hasFix ? fmtDist(r.distKm) + ' to go' : '📍 waiting…'}</div>
+      <div class="progress-track"><div class="progress-fill" data-fill="${r.pct ?? 0}" style="width:0%"></div></div>
+      <div class="car-meta">
+        <span>${r.hasFix ? (r.stale ? '📡 lost signal' : '🟢 live') : ''}</span>
+        <span>${r.hasFix ? timeAgo(r.updatedAt) : ''}</span>
+      </div>`;
+    el.appendChild(card);
+
+    if(r.hasFix && r.pct != null && window.anime){
+      const fillEl = card.querySelector('.progress-fill');
+      anime({ targets: fillEl, width: r.pct+'%', duration: 900, easing:'easeOutElastic(1, .7)' });
+    }
+
+    checkArrival(r.car, r.hasFix ? r.distKm : null);
+  });
+}
+
+/* ---------- arrival celebration ---------- */
+function checkArrival(car, distKm){
+  if(distKm != null && distKm <= ARRIVE_KM && !arrivedSet.has(car.id)){
+    arrivedSet.add(car.id);
+    celebrate(car);
+  }
+}
+function celebrate(car){
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = `🎉 ${car.name}'s car has reached Revdanda! 🏖️`;
+  document.getElementById('toastStack').appendChild(toast);
+  setTimeout(()=>{ toast.style.transition='opacity .4s'; toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 4200);
+
+  const layer = document.getElementById('confettiLayer');
+  const bits = ['🎉','✨','🎊','🌴','🏖️','💛'];
+  for(let i=0;i<28;i++){
+    const p = document.createElement('span');
+    p.className = 'confetti-piece';
+    p.textContent = bits[Math.floor(Math.random()*bits.length)];
+    p.style.left = Math.random()*100+'vw';
+    p.style.animationDelay = (Math.random()*0.6)+'s';
+    p.style.animationDuration = (2+Math.random()*1.2)+'s';
+    p.style.fontSize = (16+Math.random()*14)+'px';
+    layer.appendChild(p);
+    setTimeout(()=>p.remove(), 4000);
+  }
+}
+
+/* ---------- render ---------- */
+function renderAll(){
+  updateMapMarkers();
+  renderLeaderboard();
+}
+
+/* ---------- boot ---------- */
+function boot(){
+  initMap();
+  initSync();
+  if(myRole && myRole !== 'watch'){
+    startGeolocation();
+  }else if(myRole === 'watch'){
+    document.getElementById('roleModal').style.display = 'none';
+  }else{
+    buildRoleModal();
+    document.getElementById('roleModal').style.display = 'flex';
+  }
+  renderAll();
+  setInterval(renderAll, 5000);
+}
+boot();
+</script>
+</body>
+</html>
