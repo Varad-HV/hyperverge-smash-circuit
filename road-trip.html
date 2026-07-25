@@ -238,7 +238,7 @@ button{font-family:inherit;}
       <li><b>Destination:</b> Revdanda Fort, near Alibaug — where the Kundalika river meets the sea.</li>
       <li><b>Live sync:</b> your car's dot updates for everyone roughly every 5–8 seconds while your browser tab stays open.</li>
       <li><b>No login, no lock:</b> anyone who opens this link can see all 4 cars. Please don't forward it beyond the four of you.</li>
-      <li><b>Battery tip:</b> keep the tab open and your screen unlocked while driving (or a passenger's phone) for the smoothest tracking.</li>
+      <li><b>Battery tip:</b> we try to keep your screen awake automatically while you're sharing your location. For the smoothest tracking, keep this tab open in the foreground (yours or a passenger's phone) — browsers pause location updates for tabs that are fully closed or backgrounded for a long time.</li>
     </ul>
     <button class="close-btn" id="infoCloseBtn">Got it 🚗</button>
   </div>
@@ -294,6 +294,8 @@ let map, carMarkers = {}, carLines = {};
 let arrivedSet = new Set();
 let sheetExpanded = true;
 let followingId = null;
+let lastSyncAt = 0;
+let wakeLock = null;
 
 /* ---------- helpers ---------- */
 function haversineKm(lat1,lon1,lat2,lon2){
@@ -355,7 +357,7 @@ function chooseRole(role){
   document.getElementById('roleModal').classList.remove('show');
   startAttempted = false;
   document.getElementById('locIssue').style.display = 'none';
-  if(role !== 'watch') startGeolocation();
+  if(role !== 'watch'){ startGeolocation(); requestWakeLock(); }
   renderAll();
 }
 document.getElementById('watchBtn').onclick = ()=> chooseRole('watch');
@@ -393,6 +395,18 @@ function onPositionError(err){
     showLocIssue("Still trying to find your signal… hang tight! 📡", false);
   }
 }
+
+/* ---------- keep the screen awake while sharing ---------- */
+async function requestWakeLock(){
+  if(!('wakeLock' in navigator)) return;
+  try{
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', ()=>{ wakeLock = null; });
+  }catch(e){ /* often rejected if the tab isn't visible yet — retried on visibilitychange */ }
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && myRole && myRole !== 'watch' && !wakeLock) requestWakeLock();
+});
 function onPosition(pos){
   const { latitude:lat, longitude:lng } = pos.coords;
   hideLocIssue();
@@ -426,10 +440,17 @@ function initSync(){
       const data = snap.val() || {};
       CARS.forEach(c=>{ if(data[c.id]) remoteCars[c.id] = { ...remoteCars[c.id], ...data[c.id] }; });
       syncMode = 'synced';
+      lastSyncAt = Date.now();
       renderAll();
-    }, ()=>{ syncMode = 'offline'; });
+    }, ()=>{ syncMode = 'offline'; renderAll(); });
     startsRef.on('value', snap=>{ starts = snap.val() || {}; renderAll(); });
     setInterval(()=>{ if(carsRef) carsRef.once('value').catch(()=>{}); }, POLL_MS);
+    setInterval(()=>{
+      if(syncMode === 'synced' && lastSyncAt && Date.now() - lastSyncAt > 20000){
+        syncMode = 'offline';
+        renderAll();
+      }
+    }, 5000);
   }catch(e){
     console.error(e);
     syncMode = 'offline';
@@ -530,11 +551,25 @@ function computeRows(){
     return { car:c, hasFix, distKm, stale, pct, updatedAt: d && d.updatedAt };
   });
 }
+let prevSyncMode = null;
 function renderTopBar(rows){
+  if(syncMode !== prevSyncMode){
+    if(syncMode === 'offline' && prevSyncMode != null){
+      toast("😥 Lost the connection to the shared map — still tracking, reconnecting automatically…");
+    }else if(syncMode === 'synced' && prevSyncMode === 'offline'){
+      toast("🎉 Back online — everyone's synced up again!");
+    }
+    prevSyncMode = syncMode;
+  }
+
   const ranked = rows.filter(r=>r.hasFix).sort((a,b)=>a.distKm-b.distKm);
   const line = document.getElementById('leadLine');
-  if(!ranked.length){
-    line.textContent = 'Waiting for everyone to hit the road…';
+  if(syncMode === 'connecting'){
+    line.textContent = '🟡 Connecting to the shared map…';
+  }else if(syncMode === 'offline'){
+    line.textContent = '🔴 Can\'t reach the shared map — retrying…';
+  }else if(!ranked.length){
+    line.textContent = '🟢 Waiting for everyone to hit the road…';
   }else{
     const leader = ranked[0];
     line.textContent = `🏆 ${leader.car.name} is leading · ${fmtDist(leader.distKm)} to Revdanda`;
@@ -604,12 +639,15 @@ function checkArrival(car, distKm){
     celebrate(car);
   }
 }
+function toast(msg){
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.getElementById('toastStack').appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .4s'; el.style.opacity='0'; setTimeout(()=>el.remove(),400); }, 4200);
+}
 function celebrate(car){
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.textContent = `🎉 ${car.name} made it to Revdanda! 🏯`;
-  document.getElementById('toastStack').appendChild(toast);
-  setTimeout(()=>{ toast.style.transition='opacity .4s'; toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 4200);
+  toast(`🎉 ${car.name} made it to Revdanda! 🏯`);
   if(reduceMotion) return;
   const layer = document.getElementById('confettiLayer');
   const bits = ['🎉','✨','🎊','🌊','🏯','🌸'];
@@ -632,6 +670,7 @@ function boot(){
   initSync();
   if(myRole && myRole !== 'watch'){
     startGeolocation();
+    requestWakeLock();
   }else if(!myRole){
     buildRoleModal();
     document.getElementById('roleModal').classList.add('show');
