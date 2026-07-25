@@ -271,6 +271,7 @@ button{font-family:inherit;}
     <div class="role-grid" id="roleGrid"></div>
     <button class="watch-chip" id="watchBtn">👀 I'm just watching</button>
     <div class="modal-notice">💌 Heads up: anyone with this link can see live locations here — there's no login or password. Only share this link with the 4 travelers.</div>
+    <div class="modal-notice">📵 This needs the tab open and your phone awake to keep sharing — like every website, it can't track you with the screen off or the app switched away. That's a phone limit, not something any site can get around.</div>
   </div>
 </div>
 
@@ -284,7 +285,8 @@ button{font-family:inherit;}
       <li><b>Live sync:</b> your own dot glides in real time on your screen; everyone else sees your car update roughly every 8 seconds, with a guaranteed refresh at least once a minute. A "Weak signal" pill just means a normal cellular gap — it only turns to "Signal lost" after a few minutes of real silence.</li>
       <li><b>Speed &amp; ETA:</b> once you're moving, your card shows your speed and a rough time-to-Revdanda estimate.</li>
       <li><b>No login, no lock:</b> anyone who opens this link can see all 4 cars. Please don't forward it beyond the four of you.</li>
-      <li><b>Battery tip:</b> we try to keep your screen awake automatically while you're sharing your location. For the smoothest tracking, keep this tab open in the foreground (yours or a passenger's phone) — browsers pause location updates for tabs that are fully closed or backgrounded for a long time.</li>
+      <li><b>Keep it in front:</b> we auto-keep your screen awake while you're sharing, and auto-resume the moment you come back if it does pause. But no website — this one included — can share your location with the screen off or the tab switched away; that's an iOS/Android privacy rule, not something any app can bypass. Whoever's phone is sharing needs this tab open and visible.</li>
+      <li><b>Want truly always-on tracking?</b> For that you need a native app with background permission — WhatsApp's "Share Live Location," Google Maps location sharing, or Life360 all work with the screen locked. Nothing stops you running one of those alongside this map for the fun shared view.</li>
     </ul>
     <button class="close-btn" id="infoCloseBtn">Got it 🚗</button>
   </div>
@@ -458,8 +460,24 @@ async function requestWakeLock(){
     wakeLock.addEventListener('release', ()=>{ wakeLock = null; });
   }catch(e){ /* often rejected if the tab isn't visible yet — retried on visibilitychange */ }
 }
+
+/* Phones and browsers pause GPS + timers for backgrounded tabs (screen
+   off, app switched away) — no website can override that, by design.
+   The best we can do is recover cleanly and say so when the driver
+   comes back, instead of silently going stale with no explanation. */
+let hiddenSince = null;
 document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState === 'visible' && myRole && myRole !== 'watch' && !wakeLock) requestWakeLock();
+  if(document.visibilityState === 'visible'){
+    const wasAway = hiddenSince && (Date.now() - hiddenSince > 12000);
+    hiddenSince = null;
+    if(myRole && myRole !== 'watch'){
+      if(!wakeLock) requestWakeLock();
+      startGeolocation(); // old watch may have gone stale in the background — start fresh
+      if(wasAway) toast("👋 Welcome back — resuming your location. It pauses while this tab is backgrounded (a phone/browser limit, can't be avoided).");
+    }
+  }else{
+    hiddenSince = Date.now();
+  }
 });
 
 /* ---------- tiny celebration chime — synthesized, no audio file needed ---------- */
