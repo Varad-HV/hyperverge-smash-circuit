@@ -3,178 +3,245 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<meta name="theme-color" content="#FF9EC4">
-<title>🚗 Road Trip to Revdanda!</title>
+<meta name="theme-color" content="#FFF6E8">
+<title>Road to Revdanda 🌊</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9A%97%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
 :root{
-  --pink:#FF9EC4; --peach:#FFC97A; --mint:#A6E9DB; --sky:#BFE3FF; --ink:#3B2E4A;
-  --omkar:#FF6B6B; --akshay:#22B8A6; --yash:#FFB03B; --saguna:#9B7BFF;
-  --card-bg:rgba(255,255,255,.72); --card-border:rgba(255,255,255,.9);
+  --cream:#FFF6E8; --paper:#FFFDF7; --plum:#3D2A47; --plum-soft:#8A7593; --plum-faint:#C9BBCF;
+  --coral:#FF8B73; --skyblue:#6FC3E6; --sunyellow:#FFC94D; --mint:#65D9AE;
+  --coral-ink:#B4432E; --skyblue-ink:#1D6E8E; --sunyellow-ink:#8A6300; --mint-ink:#158A62;
+  --line:rgba(61,42,71,.10); --shadow:rgba(85,55,40,.16);
+  --radius-lg:28px; --radius-md:18px; --radius-sm:12px;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-html,body{margin:0; padding:0; overflow-x:hidden; width:100%;}
+html,body{height:100%; margin:0; overscroll-behavior:none;}
 body{
-  font-family:'Nunito',sans-serif; color:var(--ink); min-height:100vh;
-  background:
-    radial-gradient(ellipse at 15% -10%, #FFF3D0 0%, transparent 55%),
-    radial-gradient(ellipse at 100% 0%, #C9F7FF 0%, transparent 50%),
-    linear-gradient(180deg, #FFE7F0 0%, #FFF3DC 45%, #DFF7F1 100%);
-  background-attachment:fixed;
-  position:relative;
+  font-family:'Quicksand','Nunito',sans-serif; color:var(--plum); background:var(--cream);
+  position:fixed; inset:0; width:100%; overflow:hidden;
 }
 h1,h2,h3,.font-display{font-family:'Baloo 2',cursive;}
+button{font-family:inherit;}
+::selection{background:var(--sunyellow); color:var(--plum);}
 
-/* floating background decorations */
-.sky-deco{position:fixed; inset:0; overflow:hidden; z-index:0; pointer-events:none;}
-.sky-deco span{position:absolute; font-size:28px; opacity:.5; filter:drop-shadow(0 2px 3px rgba(0,0,0,.05)); animation:drift linear infinite;}
-@keyframes drift{ from{transform:translateX(-10vw) translateY(0);} to{transform:translateX(110vw) translateY(-10px);} }
-@keyframes bob{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-7px);} }
-@keyframes pulseRing{ 0%{transform:scale(.6); opacity:.65;} 100%{transform:scale(2.4); opacity:0;} }
-@keyframes fallSpin{ to{ transform:translateY(110vh) rotate(540deg); opacity:0; } }
-@keyframes dashMove{ to{ background-position:-80px 0; } }
-@keyframes popIn{ from{opacity:0; transform:scale(.85) translateY(8px);} to{opacity:1; transform:scale(1) translateY(0);} }
-
-.wrap{position:relative; z-index:1; max-width:960px; margin:0 auto; padding:14px 14px 40px;}
-
-/* header */
-.app-header{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 4px 10px;}
-.title-block h1{margin:0; font-size:26px; line-height:1.1; font-weight:800; background:linear-gradient(90deg,#FF6FA5,#FFA24C 50%,#22B8A6); -webkit-background-clip:text; background-clip:text; color:transparent;}
-.title-block .subtitle{margin:2px 0 0; font-size:13px; font-weight:600; color:#7a6a8a;}
-.header-actions{display:flex; align-items:center; gap:8px;}
-.icon-btn{width:38px; height:38px; border-radius:50%; border:none; background:var(--card-bg); border:1px solid var(--card-border); display:flex; align-items:center; justify-content:center; font-size:18px; cursor:pointer; box-shadow:0 3px 10px rgba(80,40,90,.12);}
-.icon-btn:active{transform:scale(.92);}
-.sync-pill{display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; padding:6px 10px; border-radius:999px; background:var(--card-bg); border:1px solid var(--card-border); white-space:nowrap;}
-.sync-pill .dot{width:7px; height:7px; border-radius:50%; background:#bbb;}
-.sync-pill.connecting .dot{background:#FFB03B; animation:blink 1s infinite;}
-.sync-pill.synced .dot{background:#2ecc71; box-shadow:0 0 6px #2ecc71;}
-.sync-pill.offline .dot{background:#e74c3c;}
-.sync-pill.local .dot{background:#999;}
-@keyframes blink{50%{opacity:.3;}}
-
-/* road divider */
-.road{height:14px; border-radius:8px; margin:6px 0 16px; background:
-  linear-gradient(#5b5064,#5b5064) padding-box,
-  repeating-linear-gradient(90deg, #fff 0 26px, transparent 26px 52px) 0 0/80px 4px no-repeat;
-  position:relative; background-color:#5b5064;
-}
-.road::after{content:''; position:absolute; top:50%; left:0; right:0; height:3px; transform:translateY(-50%);
-  background-image:repeating-linear-gradient(90deg, #FFE082 0 24px, transparent 24px 48px);
-  background-repeat:repeat-x; animation:dashMove 1.1s linear infinite;
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important;}
 }
 
-/* leaderboard */
-.leaderboard{display:flex; gap:10px; overflow-x:auto; padding:4px 2px 14px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;}
-.leaderboard::-webkit-scrollbar{display:none;}
-.car-card{flex:0 0 auto; width:172px; scroll-snap-align:start; background:var(--card-bg); border:1px solid var(--card-border); border-radius:20px; padding:12px; backdrop-filter:blur(6px); box-shadow:0 6px 18px rgba(80,40,90,.10); animation:popIn .4s ease both;}
-.car-card.leading{box-shadow:0 0 0 2px #FFD84D, 0 8px 22px rgba(255,180,20,.35);}
-.car-card.stale{opacity:.55;}
-.car-card .top-row{display:flex; align-items:center; gap:8px;}
-.car-avatar{width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:20px; background:var(--c); box-shadow:0 3px 8px rgba(0,0,0,.15); flex-shrink:0;}
-.car-name{font-family:'Baloo 2'; font-weight:700; font-size:15px; line-height:1.1;}
-.car-medal{font-size:16px; margin-left:auto;}
-.car-status{font-size:11px; font-weight:700; color:#8a7a98; margin-top:6px;}
-.car-dist{font-family:'Baloo 2'; font-size:19px; font-weight:700; margin-top:4px;}
-.progress-track{height:8px; border-radius:6px; background:rgba(0,0,0,.08); margin-top:8px; overflow:hidden;}
+@keyframes bob{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
+@keyframes pulseRing{ 0%{transform:scale(.55); opacity:.7;} 100%{transform:scale(2.3); opacity:0;} }
+@keyframes glow{ 0%,100%{filter:drop-shadow(0 0 2px rgba(255,201,77,.6));} 50%{filter:drop-shadow(0 0 10px rgba(255,201,77,.95));} }
+@keyframes driftCloud{ from{transform:translateX(-20%);} to{transform:translateX(340%);} }
+@keyframes sunSpin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+@keyframes fallSpin{ to{transform:translateY(112vh) rotate(560deg); opacity:0;} }
+@keyframes popIn{ from{opacity:0; transform:scale(.9) translateY(10px);} to{opacity:1; transform:scale(1) translateY(0);} }
+@keyframes slideUp{ from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:translateY(0);} }
+
+/* ============================================================
+   MAP — fills the whole screen, everything else floats above it
+   ============================================================ */
+#map{position:absolute; inset:0; z-index:0; background:#DCEFE3;}
+.leaflet-control-attribution{font-size:9px !important; background:rgba(255,253,247,.75) !important;}
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+.top-bar{position:absolute; top:0; left:0; right:0; z-index:600; padding:max(12px, env(safe-area-inset-top)) 14px 0;}
+.top-bar-inner{
+  background:rgba(255,253,247,.86); backdrop-filter:blur(10px) saturate(1.3); -webkit-backdrop-filter:blur(10px) saturate(1.3);
+  border-radius:var(--radius-lg); border:1px solid rgba(255,255,255,.7); box-shadow:0 8px 24px var(--shadow);
+  padding:12px 14px; position:relative; overflow:hidden;
+}
+.cloud-deco{position:absolute; inset:0; overflow:hidden; pointer-events:none; opacity:.55;}
+.cloud-deco span{position:absolute; font-size:22px; animation:driftCloud linear infinite;}
+.top-row{display:flex; align-items:center; gap:10px; position:relative;}
+.sun-icon{font-size:22px; animation:sunSpin 18s linear infinite; flex-shrink:0;}
+.title-block{flex:1; min-width:0;}
+.title-block h1{margin:0; font-size:19px; font-weight:700; line-height:1.15; text-wrap:balance;}
+.lead-line{margin:2px 0 0; font-size:12px; font-weight:600; color:var(--plum-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.top-actions{display:flex; gap:6px; flex-shrink:0;}
+.icon-btn{width:34px; height:34px; border-radius:50%; border:none; background:var(--paper); box-shadow:0 2px 8px var(--shadow); font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+.icon-btn:active{transform:scale(.9);}
+.trip-progress-track{height:6px; border-radius:6px; background:rgba(61,42,71,.08); margin-top:10px; overflow:hidden;}
+.trip-progress-fill{height:100%; width:0%; border-radius:6px; background:linear-gradient(90deg, var(--sunyellow), var(--coral));}
+
+/* ============================================================
+   BOTTOM SHEET
+   ============================================================ */
+.sheet{
+  position:absolute; left:0; right:0; bottom:0; z-index:600; max-height:78vh;
+  background:rgba(255,253,247,.92); backdrop-filter:blur(12px) saturate(1.3); -webkit-backdrop-filter:blur(12px) saturate(1.3);
+  border-radius:26px 26px 0 0; box-shadow:0 -8px 28px var(--shadow); border-top:1px solid rgba(255,255,255,.8);
+  padding-bottom:max(10px, env(safe-area-inset-bottom));
+  transition:transform .3s cubic-bezier(.32,.72,0,1);
+  display:flex; flex-direction:column;
+}
+.sheet-handle{width:100%; background:none; border:none; padding:10px 0 4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px;}
+.sheet-handle .bar{width:38px; height:5px; border-radius:6px; background:var(--plum-faint);}
+.sheet-handle .hint{font-size:11px; font-weight:700; color:var(--plum-soft);}
+.chip-row{display:flex; gap:10px; padding:2px 14px 12px; overflow-x:auto; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;}
+.chip-row::-webkit-scrollbar{display:none;}
+.chip{
+  flex:0 0 auto; scroll-snap-align:start; display:flex; align-items:center; gap:8px; padding:6px 12px 6px 6px;
+  border-radius:999px; border:2px solid transparent; background:var(--paper); box-shadow:0 3px 10px var(--shadow); cursor:pointer;
+}
+.chip.active{border-color:var(--c);}
+.chip:active{transform:scale(.96);}
+.chip-avatar{width:34px; height:34px; border-radius:50%; background:var(--c); display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; box-shadow:inset 0 -3px 0 rgba(0,0,0,.12);}
+.chip-name{font-weight:700; font-size:13.5px; font-family:'Baloo 2';}
+.chip-dot{width:8px; height:8px; border-radius:50%; margin-left:2px; flex-shrink:0;}
+.chip-dot.live{background:#3CC98A; box-shadow:0 0 0 3px rgba(60,201,138,.25);}
+.chip-dot.stale{background:#E0A93A;}
+.chip-dot.off{background:var(--plum-faint);}
+
+.detail-wrap{overflow-y:auto; padding:0 14px 16px;}
+.detail-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+@media(min-width:520px){ .detail-grid{grid-template-columns:1fr 1fr 1fr 1fr;} }
+.detail-card{background:var(--paper); border-radius:var(--radius-md); padding:12px; border:2px solid transparent; box-shadow:0 3px 12px var(--shadow); animation:slideUp .35s ease both;}
+.detail-card.highlight{border-color:var(--c);}
+.detail-card .top-row{display:flex; align-items:center; gap:8px;}
+.detail-card .medal{margin-left:auto; font-size:15px;}
+.detail-card .dist{font-family:'Baloo 2'; font-size:18px; font-weight:700; margin-top:8px; font-variant-numeric:tabular-nums;}
+.detail-card .status-line{font-size:11px; color:var(--plum-soft); font-weight:600; margin-top:2px;}
+.progress-track{height:7px; border-radius:6px; background:rgba(61,42,71,.09); margin-top:8px; overflow:hidden;}
 .progress-fill{height:100%; width:0%; border-radius:6px; background:var(--c);}
-.car-meta{font-size:10.5px; color:#9385a0; margin-top:6px; display:flex; justify-content:space-between;}
 
-/* map */
-.map-shell{position:relative; border-radius:22px; overflow:hidden; box-shadow:0 10px 28px rgba(80,40,90,.18); border:4px solid #fff;}
-#map{height:52vh; min-height:340px; width:100%; background:#dff3ee;}
-.recenter-btn{position:absolute; right:12px; bottom:14px; z-index:500; width:44px; height:44px; border-radius:50%; background:#fff; border:none; box-shadow:0 4px 14px rgba(0,0,0,.2); font-size:19px; cursor:pointer;}
-.recenter-btn:active{transform:scale(.9);}
-.map-hint{font-size:11.5px; text-align:center; color:#8a7a98; margin-top:8px; font-weight:600;}
+.privacy-strip{display:flex; align-items:flex-start; gap:8px; background:#FFF1D6; border:1px solid #FFE2A0; border-radius:14px; padding:9px 11px; margin:0 14px 12px; font-size:11.5px; font-weight:600; color:#8A6300; line-height:1.35;}
 
-/* leaflet marker styling */
-.car-pin{display:flex; flex-direction:column; align-items:center; animation:bob 2.6s ease-in-out infinite;}
-.car-pin .bubble{width:38px; height:38px; border-radius:50% 50% 50% 4px; transform:rotate(45deg); background:var(--c); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,.28); border:2.5px solid #fff;}
-.car-pin .bubble span{transform:rotate(-45deg); font-size:17px;}
-.dest-pin{display:flex; align-items:center; justify-content:center; position:relative; width:50px; height:50px;}
-.dest-pin .ring{position:absolute; width:40px; height:40px; border-radius:50%; border:3px solid #FF5D8F; animation:pulseRing 2s ease-out infinite;}
-.dest-pin .flag{font-size:26px; filter:drop-shadow(0 3px 4px rgba(0,0,0,.25)); z-index:2;}
-.leaflet-tooltip.car-label{background:rgba(59,46,74,.85); color:#fff; border:none; border-radius:8px; font-weight:700; font-size:11px; font-family:'Nunito',sans-serif; padding:2px 7px; box-shadow:none;}
-.leaflet-tooltip.car-label::before{border-top-color:rgba(59,46,74,.85);}
+/* location permission callout, inline in own card */
+.loc-issue{background:#FFECEA; border:1px solid #FFC9C2; border-radius:14px; padding:10px 12px; margin:0 14px 12px; font-size:12px; font-weight:700; color:#B4432E; display:none; align-items:center; gap:8px;}
+.loc-issue button{margin-left:auto; border:none; background:#FF8B73; color:#fff; border-radius:10px; padding:7px 11px; font-weight:800; font-size:11.5px; cursor:pointer; flex-shrink:0;}
 
-/* toast + confetti */
-.toast-stack{position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:3000; display:flex; flex-direction:column; gap:8px; width:min(92vw,420px);}
-.toast{background:#fff; border-radius:16px; padding:12px 16px; box-shadow:0 8px 24px rgba(0,0,0,.2); font-weight:700; font-family:'Baloo 2'; text-align:center; animation:popIn .35s ease both;}
-.confetti-layer{position:fixed; inset:0; pointer-events:none; z-index:2900; overflow:hidden;}
+/* ============================================================
+   ROLE MODAL
+   ============================================================ */
+.modal-overlay{position:fixed; inset:0; z-index:4000; background:linear-gradient(180deg, rgba(255,246,232,.97), rgba(255,236,214,.97)); display:none; align-items:center; justify-content:center; padding:20px;}
+.modal-overlay.show{display:flex;}
+.modal-card{background:var(--paper); border-radius:var(--radius-lg); padding:26px 22px; max-width:420px; width:100%; box-shadow:0 24px 60px rgba(85,55,40,.28); text-align:center; animation:popIn .4s ease both; max-height:90vh; overflow-y:auto;}
+.modal-card .hero-emoji{font-size:36px;}
+.modal-card h2{margin:4px 0 4px; font-size:23px;}
+.modal-card p.lede{font-size:13.5px; color:var(--plum-soft); margin:0 0 16px; font-weight:600;}
+.role-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.role-chip{border:2px solid transparent; background:#F7F1FA; border-radius:20px; padding:16px 6px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:7px; font-weight:700; font-family:'Baloo 2'; font-size:14px;}
+.role-chip:active{transform:scale(.95);}
+.role-chip .chip-avatar{width:46px; height:46px; font-size:22px;}
+.role-chip.selected{border-color:var(--c); background:color-mix(in srgb, var(--c) 16%, white);}
+.watch-chip{margin-top:12px; width:100%; border:2px dashed var(--plum-faint); background:transparent; border-radius:16px; padding:12px; font-weight:700; font-family:'Baloo 2'; font-size:14px; cursor:pointer; color:var(--plum-soft);}
+.watch-chip:active{transform:scale(.97);}
+.modal-notice{margin-top:16px; text-align:left; background:#FFF1D6; border:1px solid #FFE2A0; border-radius:14px; padding:11px 12px; font-size:12px; font-weight:600; color:#8A6300; line-height:1.4;}
+
+/* info modal */
+.info-modal .modal-card{text-align:left;}
+.info-modal h2{text-align:center;}
+.info-modal ul{padding-left:20px; margin:10px 0; font-size:13px; line-height:1.6;}
+.info-modal .close-btn{margin-top:16px; width:100%; border:none; background:var(--plum); color:#fff; border-radius:14px; padding:12px; font-weight:700; font-family:'Baloo 2'; font-size:14px; cursor:pointer;}
+
+/* ============================================================
+   TOASTS + CONFETTI
+   ============================================================ */
+.toast-stack{position:fixed; top:max(12px, env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:5000; display:flex; flex-direction:column; gap:8px; width:min(92vw,420px); pointer-events:none;}
+.toast{background:var(--paper); border-radius:16px; padding:12px 16px; box-shadow:0 10px 28px rgba(85,55,40,.28); font-weight:700; font-family:'Baloo 2'; text-align:center; animation:popIn .35s ease both;}
+.confetti-layer{position:fixed; inset:0; pointer-events:none; z-index:4900; overflow:hidden;}
 .confetti-piece{position:absolute; top:-30px; font-size:20px; animation:fallSpin 2.6s ease-in forwards;}
 
-/* role modal */
-.modal-overlay{position:fixed; inset:0; z-index:4000; background:linear-gradient(180deg, rgba(255,231,240,.97), rgba(223,247,241,.97)); display:flex; align-items:center; justify-content:center; padding:20px;}
-.modal-card{background:#fff; border-radius:26px; padding:26px 22px; max-width:420px; width:100%; box-shadow:0 20px 50px rgba(80,40,90,.3); text-align:center; animation:popIn .4s ease both;}
-.modal-card h2{margin:2px 0 4px; font-size:23px;}
-.modal-card p{font-size:13.5px; color:#7a6a8a; margin:0 0 18px; font-weight:600;}
-.role-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-.role-chip{border:2px solid transparent; background:#F6F1FA; border-radius:18px; padding:14px 6px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-weight:700; font-family:'Baloo 2'; font-size:14px; transition:transform .15s;}
-.role-chip:active{transform:scale(.95);}
-.role-chip .car-avatar{width:44px; height:44px; font-size:22px;}
-.role-chip.selected{border-color:var(--c); background:color-mix(in srgb, var(--c) 14%, white);}
-.watch-chip{margin-top:12px; width:100%; border:2px dashed #cfc3dc; background:transparent; border-radius:16px; padding:12px; font-weight:700; font-family:'Baloo 2'; font-size:14px; cursor:pointer; color:#7a6a8a;}
-.watch-chip:active{transform:scale(.97);}
-.modal-footer-hint{font-size:11px; color:#a597b0; margin-top:14px; font-weight:600;}
-
-.loc-banner{display:none; align-items:center; gap:10px; background:#FFF4D6; border:1px solid #FFE199; border-radius:14px; padding:10px 12px; font-size:12.5px; font-weight:700; color:#8a6a1a; margin-bottom:12px;}
-.loc-banner button{margin-left:auto; border:none; background:#FFB03B; color:#fff; border-radius:10px; padding:6px 10px; font-weight:800; font-size:11.5px; cursor:pointer;}
-
-footer{text-align:center; font-size:11px; color:#a597b0; font-weight:600; margin-top:18px;}
+/* ============================================================
+   LEAFLET MARKERS
+   ============================================================ */
+.car-pin{display:flex; flex-direction:column; align-items:center;}
+.car-pin .bubble{width:40px; height:40px; border-radius:50% 50% 50% 5px; transform:rotate(45deg); background:var(--c); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,.28); border:3px solid #fff;}
+.car-pin .bubble span{transform:rotate(-45deg); font-size:18px;}
+.car-pin.animate{animation:bob 2.6s ease-in-out infinite;}
+.dest-pin{display:flex; align-items:center; justify-content:center; position:relative; width:56px; height:56px;}
+.dest-pin .ring{position:absolute; width:42px; height:42px; border-radius:50%; border:3px solid #FF8B73;}
+.dest-pin.animate .ring{animation:pulseRing 2.2s ease-out infinite;}
+.dest-pin .badge{width:44px; height:44px; border-radius:50%; background:var(--paper); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow:0 4px 12px rgba(0,0,0,.25); z-index:2; border:2.5px solid var(--sunyellow);}
+.dest-pin.animate .badge{animation:glow 2.4s ease-in-out infinite;}
+.leaflet-tooltip.pin-label{background:rgba(61,42,71,.88); color:#fff; border:none; border-radius:8px; font-weight:700; font-size:11px; font-family:'Quicksand',sans-serif; padding:3px 8px; box-shadow:none;}
+.leaflet-tooltip.pin-label::before{border-top-color:rgba(61,42,71,.88);}
 
 @media(min-width:700px){
-  #map{height:60vh;}
-  .car-card{width:190px;}
+  .sheet{max-width:640px; left:50%; transform:translateX(-50%) translateY(0); border-radius:26px; bottom:16px; box-shadow:0 16px 40px var(--shadow);}
+  .sheet.collapsed{transform:translateX(-50%) translateY(calc(100% - 78px));}
+  .top-bar{max-width:640px; left:50%; transform:translateX(-50%); right:auto; width:100%;}
 }
+.sheet.collapsed{transform:translateY(calc(100% - 78px));}
 </style>
 </head>
 <body>
 
-<div class="sky-deco" id="skyDeco"></div>
-<div class="confetti-layer" id="confettiLayer"></div>
-<div class="toast-stack" id="toastStack"></div>
+<div id="map"></div>
 
-<div class="modal-overlay" id="roleModal">
-  <div class="modal-card">
-    <div style="font-size:38px;">🚗💨🏖️</div>
-    <h2 class="font-display">Who's driving?</h2>
-    <p>Pick your car to start sharing your live location. Just visiting? Tap "I'm just watching" instead.</p>
-    <div class="role-grid" id="roleGrid"></div>
-    <button class="watch-chip" id="watchBtn">👀 I'm just watching</button>
-    <div class="modal-footer-hint">Everyone who opens this page sees all 4 cars live, synced in real time.</div>
+<div class="toast-stack" id="toastStack"></div>
+<div class="confetti-layer" id="confettiLayer"></div>
+
+<!-- top bar -->
+<div class="top-bar">
+  <div class="top-bar-inner">
+    <div class="cloud-deco" id="cloudDeco"></div>
+    <div class="top-row">
+      <span class="sun-icon">☀️</span>
+      <div class="title-block">
+        <h1>Road to Revdanda 🌊</h1>
+        <p class="lead-line" id="leadLine">Waiting for everyone to hit the road…</p>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="infoBtn" title="About this map" aria-label="About this map">ℹ️</button>
+        <button class="icon-btn" id="settingsBtn" title="Change who you are" aria-label="Change who you are">⚙️</button>
+      </div>
+    </div>
+    <div class="trip-progress-track"><div class="trip-progress-fill" id="tripProgressFill"></div></div>
   </div>
 </div>
 
-<div class="wrap">
-  <div class="app-header">
-    <div class="title-block">
-      <h1>🚗 Road Trip to Revdanda!</h1>
-      <p class="subtitle">Live tracking Omkar · Akshay · Yash · Saguna 🏖️</p>
-    </div>
-    <div class="header-actions">
-      <div class="sync-pill local" id="syncPill"><span class="dot"></span><span class="sync-label">Local</span></div>
-      <button class="icon-btn" id="settingsBtn" title="Change role">⚙️</button>
-    </div>
-  </div>
-
-  <div class="road"></div>
-
-  <div class="loc-banner" id="locBanner">
-    <span>📍 Location access needed to share your car's spot.</span>
+<!-- bottom sheet -->
+<div class="sheet" id="sheet">
+  <button class="sheet-handle" id="sheetHandle" aria-expanded="true" aria-label="Toggle traveler details">
+    <span class="bar"></span>
+    <span class="hint" id="sheetHint">Tap a traveler to follow their car · tap here to collapse</span>
+  </button>
+  <div class="chip-row" id="chipRow"></div>
+  <div class="loc-issue" id="locIssue">
+    <span id="locIssueText">📍 We can't see your car without location access.</span>
     <button id="locRetryBtn">Enable</button>
   </div>
-
-  <div class="leaderboard" id="leaderboard"></div>
-
-  <div class="map-shell">
-    <div id="map"></div>
-    <button class="recenter-btn" id="recenterBtn" title="Recenter">🎯</button>
+  <div class="detail-wrap" id="detailWrap">
+    <div class="privacy-strip">💌 This page shares real live location with anyone who has this link — no login, no lock. Please only send it to Omkar, Akshay, Yash &amp; Saguna.</div>
+    <div class="detail-grid" id="detailGrid"></div>
   </div>
-  <p class="map-hint">🏁 Finish line: Revdanda Beach, Alibaug</p>
+</div>
 
-  <footer>Made with 💗 for the crew heading to Revdanda</footer>
+<!-- role selection modal -->
+<div class="modal-overlay" id="roleModal">
+  <div class="modal-card">
+    <div class="hero-emoji">🚗🌊🏯</div>
+    <h2 class="font-display">Which car are you in?</h2>
+    <p class="lede">Pick your name to start sharing your live location. Just following along? Tap "I'm just watching."</p>
+    <div class="role-grid" id="roleGrid"></div>
+    <button class="watch-chip" id="watchBtn">👀 I'm just watching</button>
+    <div class="modal-notice">💌 Heads up: anyone with this link can see live locations here — there's no login or password. Only share this link with the 4 travelers.</div>
+  </div>
+</div>
+
+<!-- info / about modal -->
+<div class="modal-overlay info-modal" id="infoModal">
+  <div class="modal-card">
+    <div class="hero-emoji">🏯</div>
+    <h2 class="font-display">About this map</h2>
+    <ul>
+      <li><b>Destination:</b> Revdanda Fort, near Alibaug — where the Kundalika river meets the sea.</li>
+      <li><b>Live sync:</b> your car's dot updates for everyone roughly every 5–8 seconds while your browser tab stays open.</li>
+      <li><b>No login, no lock:</b> anyone who opens this link can see all 4 cars. Please don't forward it beyond the four of you.</li>
+      <li><b>Battery tip:</b> keep the tab open and your screen unlocked while driving (or a passenger's phone) for the smoothest tracking.</li>
+    </ul>
+    <button class="close-btn" id="infoCloseBtn">Got it 🚗</button>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -183,11 +250,13 @@ footer{text-align:center; font-size:11px; color:#a597b0; font-weight:600; margin
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
 <script>
 /* ============================================================
-   Reuses the same Firebase Realtime Database project already
-   wired up for the Smash Circuit site (open read/write rules,
-   fine for a private trip among friends). Data lives under a
-   separate "roadTrip2026" key so it never touches the badminton
-   data at the root.
+   Shared live-location "storage" — a Firebase Realtime Database
+   already provisioned for this project (open read/write rules;
+   fine for a private trip, not for anything sensitive). Each
+   traveler gets one key, e.g. roadTrip2026/cars/omkar, holding
+   {lat, lng, timestamp}. Every open tab listens for changes, so
+   this is the functional equivalent of shared persistent storage
+   with one key per person.
    ============================================================ */
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDcwX_rdXWtNZA78boejGiMnk-MpWurUao",
@@ -200,31 +269,33 @@ const FIREBASE_CONFIG = {
 };
 const DB_ROOT = 'roadTrip2026';
 
-const DEST = { lat: 18.5432, lng: 72.9427, name: 'Revdanda Beach, Alibaug' };
+const DEST = { lat: 18.547, lng: 72.928, name: 'Revdanda Fort' };
 const CARS = [
-  { id:'omkar',  name:'Omkar',  emoji:'🚙', color:'var(--omkar)'  },
-  { id:'akshay', name:'Akshay', emoji:'🚗', color:'var(--akshay)' },
-  { id:'yash',   name:'Yash',   emoji:'🚕', color:'var(--yash)'   },
-  { id:'saguna', name:'Saguna', emoji:'🚓', color:'var(--saguna)' },
+  { id:'omkar',  name:'Omkar',  animal:'🦊', c:'var(--coral)'    },
+  { id:'akshay', name:'Akshay', animal:'🐧', c:'var(--skyblue)'  },
+  { id:'yash',   name:'Yash',   animal:'🐥', c:'var(--sunyellow)'},
+  { id:'saguna', name:'Saguna', animal:'🐢', c:'var(--mint)'     },
 ];
 const CAR_BY_ID = Object.fromEntries(CARS.map(c=>[c.id,c]));
 const ARRIVE_KM = 0.5;
-const WRITE_INTERVAL_MS = 8000;
+const WRITE_INTERVAL_MS = 6000;
+const POLL_MS = 6000;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-let myRole = localStorage.getItem('roadtrip_role'); // car id or 'watch' or null
+let myRole = localStorage.getItem('roadtrip_role');
 let db = null, carsRef = null, startsRef = null;
 let syncMode = 'local';
-let remoteCars = {};   // id -> {lat,lng,heading,speed,accuracy,updatedAt,name}
-let starts = {};       // id -> {lat,lng,distKm}
-let myLastFix = null;  // freshest local geolocation fix for own car
+let remoteCars = {};
+let starts = {};
 let lastWriteAt = 0;
 let startAttempted = false;
 let watchId = null;
-let map, destMarker, carMarkers = {}, carLines = {};
+let map, carMarkers = {}, carLines = {};
 let arrivedSet = new Set();
-let prevLeaderId = null;
+let sheetExpanded = true;
+let followingId = null;
 
-/* ---------- geo helpers ---------- */
+/* ---------- helpers ---------- */
 function haversineKm(lat1,lon1,lat2,lon2){
   const R = 6371;
   const dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
@@ -244,19 +315,23 @@ function timeAgo(ts){
   if(m < 60) return m+'m ago';
   return Math.floor(m/60)+'h ago';
 }
+function resolveColor(varExpr){
+  const m = varExpr.match(/--([\w-]+)/);
+  return m ? (getComputedStyle(document.documentElement).getPropertyValue('--'+m[1]).trim() || '#999') : '#999';
+}
 
-/* ---------- sky decorations ---------- */
-(function initSkyDeco(){
-  const emojis = ['☁️','☁️','🌤️','🌴','☁️'];
-  const el = document.getElementById('skyDeco');
-  emojis.forEach((e,i)=>{
+/* ---------- ambient sky decor ---------- */
+(function initClouds(){
+  const el = document.getElementById('cloudDeco');
+  if(reduceMotion) return;
+  ['☁️','☁️','🌥️'].forEach((e,i)=>{
     const s = document.createElement('span');
     s.textContent = e;
-    s.style.top = (8 + i*17) + '%';
-    s.style.left = '-10%';
-    s.style.fontSize = (22 + (i%3)*10) + 'px';
-    s.style.animationDuration = (40 + i*13) + 's';
-    s.style.animationDelay = (-i*9) + 's';
+    s.style.top = (5 + i*20) + '%';
+    s.style.left = '0%';
+    s.style.fontSize = (16 + i*4) + 'px';
+    s.style.animationDuration = (22 + i*9) + 's';
+    s.style.animationDelay = (-i*7) + 's';
     el.appendChild(s);
   });
 })();
@@ -268,8 +343,8 @@ function buildRoleModal(){
   CARS.forEach(c=>{
     const chip = document.createElement('div');
     chip.className = 'role-chip' + (myRole===c.id ? ' selected' : '');
-    chip.style.setProperty('--c', c.color);
-    chip.innerHTML = `<div class="car-avatar" style="background:${c.color}">${c.emoji}</div><div>${c.name}</div>`;
+    chip.style.setProperty('--c', c.c);
+    chip.innerHTML = `<div class="chip-avatar" style="background:${resolveColor(c.c)}">${c.animal}</div><div>${c.name}</div>`;
     chip.onclick = ()=> chooseRole(c.id);
     grid.appendChild(chip);
   });
@@ -277,22 +352,25 @@ function buildRoleModal(){
 function chooseRole(role){
   myRole = role;
   localStorage.setItem('roadtrip_role', role);
-  document.getElementById('roleModal').style.display = 'none';
+  document.getElementById('roleModal').classList.remove('show');
   startAttempted = false;
+  document.getElementById('locIssue').style.display = 'none';
   if(role !== 'watch') startGeolocation();
   renderAll();
 }
 document.getElementById('watchBtn').onclick = ()=> chooseRole('watch');
 document.getElementById('settingsBtn').onclick = ()=>{
   buildRoleModal();
-  document.getElementById('roleModal').style.display = 'flex';
+  document.getElementById('roleModal').classList.add('show');
 };
+document.getElementById('infoBtn').onclick = ()=> document.getElementById('infoModal').classList.add('show');
+document.getElementById('infoCloseBtn').onclick = ()=> document.getElementById('infoModal').classList.remove('show');
 
 /* ---------- geolocation ---------- */
 function startGeolocation(){
-  document.getElementById('locBanner').style.display = 'none';
+  hideLocIssue();
   if(!('geolocation' in navigator)){
-    showLocBanner("Your browser can't share location.");
+    showLocIssue("This browser can't share your location. You can still watch the map. 🙈", false);
     return;
   }
   if(watchId !== null) navigator.geolocation.clearWatch(watchId);
@@ -300,53 +378,45 @@ function startGeolocation(){
     enableHighAccuracy:true, maximumAge:5000, timeout:20000
   });
 }
-function showLocBanner(msg){
-  const b = document.getElementById('locBanner');
-  b.querySelector('span').textContent = '📍 ' + msg;
-  b.style.display = 'flex';
+function showLocIssue(msg, showRetry){
+  const box = document.getElementById('locIssue');
+  document.getElementById('locIssueText').textContent = msg;
+  document.getElementById('locRetryBtn').style.display = showRetry===false ? 'none' : 'inline-block';
+  box.style.display = 'flex';
 }
+function hideLocIssue(){ document.getElementById('locIssue').style.display = 'none'; }
 document.getElementById('locRetryBtn').onclick = startGeolocation;
 function onPositionError(err){
-  showLocBanner(err.code === 1 ? 'Location permission denied — enable it in your browser settings, or just watch the map.' : 'Could not get your location — retrying…');
+  if(err.code === 1){
+    showLocIssue("Location access was declined, so your car won't show up 🙈 Turn it on in your browser's site settings, then tap Enable.", true);
+  }else{
+    showLocIssue("Still trying to find your signal… hang tight! 📡", false);
+  }
 }
 function onPosition(pos){
-  const { latitude:lat, longitude:lng, heading, speed, accuracy } = pos.coords;
-  myLastFix = { lat, lng, heading, speed, accuracy, updatedAt: Date.now() };
-  remoteCars[myRole] = { ...(remoteCars[myRole]||{}), ...myLastFix, name: CAR_BY_ID[myRole].name };
+  const { latitude:lat, longitude:lng } = pos.coords;
+  hideLocIssue();
+  remoteCars[myRole] = { ...(remoteCars[myRole]||{}), lat, lng, updatedAt: Date.now(), name: CAR_BY_ID[myRole].name };
   renderAll();
 
   if(!startAttempted && startsRef){
     startAttempted = true;
-    startsRef.child(myRole).transaction(cur=>{
-      if(cur) return cur;
-      return { lat, lng, distKm: haversineKm(lat, lng, DEST.lat, DEST.lng) };
-    });
+    startsRef.child(myRole).transaction(cur=> cur || { lat, lng, distKm: haversineKm(lat, lng, DEST.lat, DEST.lng) });
   }
 
   const now = Date.now();
   if(carsRef && now - lastWriteAt > WRITE_INTERVAL_MS){
     lastWriteAt = now;
     carsRef.child(myRole).update({
-      name: CAR_BY_ID[myRole].name,
-      lat, lng,
-      heading: heading ?? null,
-      speed: speed ?? null,
-      accuracy: accuracy ?? null,
+      name: CAR_BY_ID[myRole].name, lat, lng,
       updatedAt: firebase.database.ServerValue.TIMESTAMP
     }).catch(e=>console.error('write failed', e));
   }
 }
 
-/* ---------- firebase sync ---------- */
-function updateSyncPill(){
-  const labels = { local:'Local only', connecting:'Connecting…', synced:'Live synced', offline:'Sync error' };
-  const pill = document.getElementById('syncPill');
-  pill.className = 'sync-pill ' + syncMode;
-  pill.querySelector('.sync-label').textContent = labels[syncMode];
-}
+/* ---------- firebase sync (poll-and-listen shared storage) ---------- */
 function initSync(){
   syncMode = 'connecting';
-  updateSyncPill();
   try{
     firebase.initializeApp(FIREBASE_CONFIG);
     db = firebase.database();
@@ -354,43 +424,47 @@ function initSync(){
     startsRef = db.ref(DB_ROOT + '/starts');
     carsRef.on('value', snap=>{
       const data = snap.val() || {};
-      CARS.forEach(c=>{
-        if(data[c.id]) remoteCars[c.id] = { ...remoteCars[c.id], ...data[c.id] };
-      });
+      CARS.forEach(c=>{ if(data[c.id]) remoteCars[c.id] = { ...remoteCars[c.id], ...data[c.id] }; });
       syncMode = 'synced';
-      updateSyncPill();
       renderAll();
-    }, ()=>{ syncMode = 'offline'; updateSyncPill(); });
+    }, ()=>{ syncMode = 'offline'; });
     startsRef.on('value', snap=>{ starts = snap.val() || {}; renderAll(); });
+    setInterval(()=>{ if(carsRef) carsRef.once('value').catch(()=>{}); }, POLL_MS);
   }catch(e){
     console.error(e);
     syncMode = 'offline';
-    updateSyncPill();
   }
 }
 
 /* ---------- map ---------- */
 function initMap(){
-  map = L.map('map', { zoomControl:true, attributionControl:true }).setView([DEST.lat, DEST.lng], 10);
+  map = L.map('map', { zoomControl:false, attributionControl:true }).setView([DEST.lat, DEST.lng], 10);
+  L.control.zoom({ position:'topright' }).addTo(map);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
+    maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
   const destIcon = L.divIcon({
-    className:'', html:`<div class="dest-pin"><div class="ring"></div><span class="flag">🏁</span></div>`,
-    iconSize:[50,50], iconAnchor:[25,25]
+    className:'', html:`<div class="dest-pin${reduceMotion?'':' animate'}"><div class="ring"></div><div class="badge">🏯</div></div>`,
+    iconSize:[56,56], iconAnchor:[28,28]
   });
-  destMarker = L.marker([DEST.lat, DEST.lng], { icon: destIcon }).addTo(map)
-    .bindTooltip('🏁 ' + DEST.name, { permanent:true, direction:'top', className:'car-label', offset:[0,-16] });
-
-  document.getElementById('recenterBtn').onclick = recenterMap;
+  L.marker([DEST.lat, DEST.lng], { icon: destIcon, zIndexOffset: 1000 }).addTo(map)
+    .bindTooltip('🏯 Revdanda Fort — you made it!', { permanent:false, direction:'top', className:'pin-label', offset:[0,-20] });
 }
-function recenterMap(){
+function recenterAll(){
   const pts = [[DEST.lat, DEST.lng]];
   CARS.forEach(c=>{ const d = remoteCars[c.id]; if(d && d.lat) pts.push([d.lat, d.lng]); });
-  if(pts.length > 1) map.fitBounds(pts, { padding:[50,50], maxZoom:13 });
-  else map.setView([DEST.lat, DEST.lng], 10);
+  if(pts.length > 1) map.fitBounds(pts, { padding:[60,60], maxZoom:13, animate:!reduceMotion });
+}
+function focusCar(id){
+  const d = remoteCars[id];
+  followingId = id;
+  if(d && d.lat != null){
+    if(reduceMotion) map.setView([d.lat, d.lng], 15);
+    else map.flyTo([d.lat, d.lng], 15, { duration:1.1 });
+  }
+  expandSheet();
+  highlightCard(id);
 }
 let didInitialFit = false;
 function updateMapMarkers(){
@@ -398,85 +472,129 @@ function updateMapMarkers(){
     const d = remoteCars[c.id];
     if(!d || d.lat == null) return;
     const icon = L.divIcon({
-      className:'', html:`<div class="car-pin" style="--c:${c.color}"><div class="bubble"><span>${c.emoji}</span></div></div>`,
-      iconSize:[38,50], iconAnchor:[19,44]
+      className:'', html:`<div class="car-pin${reduceMotion?'':' animate'}"><div class="bubble" style="--c:${resolveColor(c.c)}"><span>${c.animal}</span></div></div>`,
+      iconSize:[40,52], iconAnchor:[20,46]
     });
     if(!carMarkers[c.id]){
       carMarkers[c.id] = L.marker([d.lat, d.lng], { icon })
         .addTo(map)
-        .bindTooltip(c.name, { permanent:true, direction:'bottom', className:'car-label', offset:[0,2] });
+        .bindTooltip(c.name, { permanent:true, direction:'bottom', className:'pin-label', offset:[0,2] })
+        .on('click', ()=> focusCar(c.id));
     }else{
       carMarkers[c.id].setLatLng([d.lat, d.lng]);
       carMarkers[c.id].setIcon(icon);
     }
     if(!carLines[c.id]){
-      carLines[c.id] = L.polyline([[d.lat,d.lng],[DEST.lat,DEST.lng]], { color:getComputedColor(c.color), weight:2, dashArray:'6,8', opacity:.55 }).addTo(map);
+      carLines[c.id] = L.polyline([[d.lat,d.lng],[DEST.lat,DEST.lng]], { color:resolveColor(c.c), weight:2, dashArray:'6,8', opacity:.5 }).addTo(map);
     }else{
       carLines[c.id].setLatLngs([[d.lat,d.lng],[DEST.lat,DEST.lng]]);
     }
   });
   if(!didInitialFit && CARS.some(c=>remoteCars[c.id] && remoteCars[c.id].lat != null)){
     didInitialFit = true;
-    recenterMap();
+    recenterAll();
   }
 }
-function getComputedColor(varExpr){
-  const m = varExpr.match(/--([\w-]+)/);
-  if(!m) return '#999';
-  return getComputedStyle(document.documentElement).getPropertyValue('--'+m[1]).trim() || '#999';
+
+/* ---------- bottom sheet ---------- */
+function expandSheet(){
+  sheetExpanded = true;
+  document.getElementById('sheet').classList.remove('collapsed');
+  document.getElementById('sheetHandle').setAttribute('aria-expanded','true');
+  document.getElementById('sheetHint').textContent = 'Tap a traveler to follow their car · tap here to collapse';
+}
+function toggleSheet(){
+  sheetExpanded = !sheetExpanded;
+  document.getElementById('sheet').classList.toggle('collapsed', !sheetExpanded);
+  document.getElementById('sheetHandle').setAttribute('aria-expanded', String(sheetExpanded));
+  document.getElementById('sheetHint').textContent = sheetExpanded
+    ? 'Tap a traveler to follow their car · tap here to collapse'
+    : 'Tap to see everyone\'s distance to go';
+}
+document.getElementById('sheetHandle').onclick = toggleSheet;
+function highlightCard(id){
+  document.querySelectorAll('.detail-card').forEach(el=> el.classList.toggle('highlight', el.dataset.id===id));
+  document.querySelectorAll('.chip').forEach(el=> el.classList.toggle('active', el.dataset.id===id));
 }
 
-/* ---------- leaderboard ---------- */
-function renderLeaderboard(){
-  const el = document.getElementById('leaderboard');
-  const rows = CARS.map(c=>{
+/* ---------- rendering ---------- */
+function computeRows(){
+  return CARS.map(c=>{
     const d = remoteCars[c.id];
     const hasFix = d && d.lat != null;
     const distKm = hasFix ? haversineKm(d.lat, d.lng, DEST.lat, DEST.lng) : null;
     const stale = hasFix && d.updatedAt && (Date.now() - d.updatedAt > 120000);
     const st = starts[c.id];
     let pct = null;
-    if(hasFix && st && st.distKm > 0){
-      pct = Math.max(0, Math.min(100, ((st.distKm - distKm) / st.distKm) * 100));
-    }
+    if(hasFix && st && st.distKm > 0) pct = Math.max(0, Math.min(100, ((st.distKm - distKm) / st.distKm) * 100));
     return { car:c, hasFix, distKm, stale, pct, updatedAt: d && d.updatedAt };
   });
-
+}
+function renderTopBar(rows){
   const ranked = rows.filter(r=>r.hasFix).sort((a,b)=>a.distKm-b.distKm);
-  const medals = ['🥇','🥈','🥉','🏅'];
-  const rankOf = {};
-  ranked.forEach((r,i)=> rankOf[r.car.id] = i);
-
-  if(ranked[0] && ranked[0].car.id !== prevLeaderId){
-    prevLeaderId = ranked[0].car.id;
+  const line = document.getElementById('leadLine');
+  if(!ranked.length){
+    line.textContent = 'Waiting for everyone to hit the road…';
+  }else{
+    const leader = ranked[0];
+    line.textContent = `🏆 ${leader.car.name} is leading · ${fmtDist(leader.distKm)} to Revdanda`;
   }
+  const fill = document.getElementById('tripProgressFill');
+  const pct = ranked.length && ranked[0].pct != null ? ranked[0].pct : 0;
+  if(window.anime && !reduceMotion) anime({ targets: fill, width: pct+'%', duration:900, easing:'easeOutElastic(1, .7)' });
+  else fill.style.width = pct+'%';
+}
+function renderChipsAndCards(rows){
+  const chipRow = document.getElementById('chipRow');
+  const grid = document.getElementById('detailGrid');
+  chipRow.innerHTML = '';
+  grid.innerHTML = '';
+  const medals = ['🥇','🥈','🥉','🏅'];
+  const ranked = rows.filter(r=>r.hasFix).sort((a,b)=>a.distKm-b.distKm);
+  const rankOf = {}; ranked.forEach((r,i)=> rankOf[r.car.id]=i);
 
-  el.innerHTML = '';
   rows.forEach(r=>{
+    const color = resolveColor(r.car.c);
+    const dotClass = !r.hasFix ? 'off' : (r.stale ? 'stale' : 'live');
+
+    const chip = document.createElement('button');
+    chip.className = 'chip' + (followingId===r.car.id ? ' active' : '');
+    chip.dataset.id = r.car.id;
+    chip.style.setProperty('--c', color);
+    chip.innerHTML = `<span class="chip-avatar" style="background:${color}">${r.car.animal}</span><span class="chip-name">${r.car.name}</span><span class="chip-dot ${dotClass}"></span>`;
+    chip.onclick = ()=> focusCar(r.car.id);
+    chipRow.appendChild(chip);
+
     const card = document.createElement('div');
-    card.className = 'car-card' + (r.hasFix && rankOf[r.car.id]===0 ? ' leading' : '') + (r.stale ? ' stale' : '');
-    card.style.setProperty('--c', getComputedColor(r.car.color));
+    card.className = 'detail-card' + (followingId===r.car.id ? ' highlight' : '');
+    card.dataset.id = r.car.id;
+    card.style.setProperty('--c', color);
+    const statusText = !r.hasFix ? '🌤️ Not on the road yet' : (r.stale ? '📡 Signal lost — ' + timeAgo(r.updatedAt) : '🟢 Live — ' + timeAgo(r.updatedAt));
     card.innerHTML = `
       <div class="top-row">
-        <div class="car-avatar" style="background:${getComputedColor(r.car.color)}">${r.car.emoji}</div>
-        <div class="car-name">${r.car.name}</div>
-        ${r.hasFix ? `<div class="car-medal">${medals[Math.min(rankOf[r.car.id],3)]}</div>` : ''}
+        <span class="chip-avatar" style="background:${color}">${r.car.animal}</span>
+        <span class="chip-name">${r.car.name}</span>
+        ${r.hasFix ? `<span class="medal">${medals[Math.min(rankOf[r.car.id],3)]}</span>` : ''}
       </div>
-      <div class="car-dist">${r.hasFix ? fmtDist(r.distKm) + ' to go' : '📍 waiting…'}</div>
-      <div class="progress-track"><div class="progress-fill" data-fill="${r.pct ?? 0}" style="width:0%"></div></div>
-      <div class="car-meta">
-        <span>${r.hasFix ? (r.stale ? '📡 lost signal' : '🟢 live') : ''}</span>
-        <span>${r.hasFix ? timeAgo(r.updatedAt) : ''}</span>
-      </div>`;
-    el.appendChild(card);
+      <div class="dist">${r.hasFix ? fmtDist(r.distKm) + ' to go' : '—'}</div>
+      <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
+      <div class="status-line">${statusText}</div>`;
+    card.onclick = ()=> focusCar(r.car.id);
+    grid.appendChild(card);
 
-    if(r.hasFix && r.pct != null && window.anime){
+    if(r.hasFix && r.pct != null){
       const fillEl = card.querySelector('.progress-fill');
-      anime({ targets: fillEl, width: r.pct+'%', duration: 900, easing:'easeOutElastic(1, .7)' });
+      if(window.anime && !reduceMotion) anime({ targets: fillEl, width: r.pct+'%', duration:900, easing:'easeOutElastic(1, .7)' });
+      else fillEl.style.width = r.pct+'%';
     }
-
     checkArrival(r.car, r.hasFix ? r.distKm : null);
   });
+}
+function renderAll(){
+  updateMapMarkers();
+  const rows = computeRows();
+  renderTopBar(rows);
+  renderChipsAndCards(rows);
 }
 
 /* ---------- arrival celebration ---------- */
@@ -489,12 +607,12 @@ function checkArrival(car, distKm){
 function celebrate(car){
   const toast = document.createElement('div');
   toast.className = 'toast';
-  toast.textContent = `🎉 ${car.name}'s car has reached Revdanda! 🏖️`;
+  toast.textContent = `🎉 ${car.name} made it to Revdanda! 🏯`;
   document.getElementById('toastStack').appendChild(toast);
   setTimeout(()=>{ toast.style.transition='opacity .4s'; toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 4200);
-
+  if(reduceMotion) return;
   const layer = document.getElementById('confettiLayer');
-  const bits = ['🎉','✨','🎊','🌴','🏖️','💛'];
+  const bits = ['🎉','✨','🎊','🌊','🏯','🌸'];
   for(let i=0;i<28;i++){
     const p = document.createElement('span');
     p.className = 'confetti-piece';
@@ -508,23 +626,15 @@ function celebrate(car){
   }
 }
 
-/* ---------- render ---------- */
-function renderAll(){
-  updateMapMarkers();
-  renderLeaderboard();
-}
-
 /* ---------- boot ---------- */
 function boot(){
   initMap();
   initSync();
   if(myRole && myRole !== 'watch'){
     startGeolocation();
-  }else if(myRole === 'watch'){
-    document.getElementById('roleModal').style.display = 'none';
-  }else{
+  }else if(!myRole){
     buildRoleModal();
-    document.getElementById('roleModal').style.display = 'flex';
+    document.getElementById('roleModal').classList.add('show');
   }
   renderAll();
   setInterval(renderAll, 5000);
